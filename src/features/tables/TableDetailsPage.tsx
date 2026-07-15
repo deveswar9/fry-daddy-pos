@@ -18,7 +18,7 @@ import {
   MenuItem
 } from '@/firebase/services';
 import { useAuth } from '@/context/AuthContext';
-import { AddItemsDialog } from '@/features/menu/AddItemsDialog';
+import { AddItemsDialog, getCategoryBadgeStyles } from '@/features/menu/AddItemsDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -249,11 +249,7 @@ export const TableDetailsPage: React.FC = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-semibold text-sm">{item.itemName}</span>
-                            <span className={`px-2 py-0.2 rounded-full text-[9px] font-semibold ${
-                              item.category === 'Franchise'
-                                ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                                : 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20'
-                            }`}>
+                            <span className={`px-2 py-0.2 rounded-full text-[9px] font-semibold ${getCategoryBadgeStyles(item.category)}`}>
                               {item.category}
                             </span>
                           </div>
@@ -381,7 +377,7 @@ export const TableDetailsPage: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-slate-400 font-light">Counter Assignment</span>
                   <span className="font-bold">
-                    {isB1InsideRule ? 'Counter B1 (Owner)' : 'Counter B2 (Brother)'}
+                    {isB1InsideRule ? 'Counter B1' : 'Counter B2'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -412,7 +408,7 @@ export const TableDetailsPage: React.FC = () => {
               <div className="p-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed font-light">
-                  <strong>Notice:</strong> This is an <em>{table.location} Table</em>. Payment must be collected at <strong>Counter {isB1InsideRule ? 'B1 (Owner)' : 'B2 (Brother)'}</strong>. 
+                  <strong>Notice:</strong> This is an <em>{table.location} Table</em>. Payment must be collected at <strong>Counter {isB1InsideRule ? 'B1' : 'B2'}</strong>. 
                   You can still add items or request the bill, but payment button is locked for Counter {counter}.
                 </div>
               </div>

@@ -16,6 +16,8 @@ import {
   getDocs
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config';
+import { menuSeed, type MenuKitchen, type MenuSeedItem } from '@/data/menuSeed';
+export type { MenuKitchen, MenuSeedItem };
 
 // ----------------------------------------------------
 // TYPES
@@ -33,10 +35,11 @@ export interface Table {
 export interface MenuItem {
   id: string;
   name: string;
-  price: number;
-  category: 'Franchise' | 'Fast Food' | 'Drinks' | 'Ice Cream';
-  kitchen: 'Franchise Kitchen' | 'Fast Food Kitchen';
+  price: number | null;
+  category: string;
+  kitchen: MenuKitchen;
   active: boolean;
+  needsVerification?: boolean;
 }
 
 export interface Order {
@@ -59,8 +62,8 @@ export interface OrderItem {
   itemName: string;
   price: number;
   quantity: number;
-  category: 'Franchise' | 'Fast Food' | 'Drinks' | 'Ice Cream';
-  kitchen: 'Franchise Kitchen' | 'Fast Food Kitchen';
+  category: string;
+  kitchen: MenuKitchen;
   notes: string | null;
   createdAt: number;
 }
@@ -111,19 +114,19 @@ const INITIAL_TABLES: Table[] = [
 
 const INITIAL_MENU: MenuItem[] = [
   // Franchise
-  { id: 'm1', name: 'Crispy Chicken', price: 220, category: 'Franchise', kitchen: 'Franchise Kitchen', active: true },
-  { id: 'm2', name: 'Chicken Burger', price: 120, category: 'Franchise', kitchen: 'Franchise Kitchen', active: true },
-  { id: 'm3', name: 'Club Sandwich', price: 90, category: 'Franchise', kitchen: 'Franchise Kitchen', active: true },
+  { id: 'm1', name: 'Crispy Chicken', price: 220, category: 'Franchise', kitchen: 'Restaurant', active: true },
+  { id: 'm2', name: 'Chicken Burger', price: 120, category: 'Franchise', kitchen: 'Restaurant', active: true },
+  { id: 'm3', name: 'Club Sandwich', price: 90, category: 'Franchise', kitchen: 'Restaurant', active: true },
   // Fast Food
-  { id: 'm4', name: 'Hakka Noodles', price: 140, category: 'Fast Food', kitchen: 'Fast Food Kitchen', active: true },
-  { id: 'm5', name: 'Veg Fried Rice', price: 150, category: 'Fast Food', kitchen: 'Fast Food Kitchen', active: true },
-  { id: 'm6', name: 'Manchuria Wet', price: 135, category: 'Fast Food', kitchen: 'Fast Food Kitchen', active: true },
+  { id: 'm4', name: 'Hakka Noodles', price: 140, category: 'Fast Food', kitchen: 'Fast Food', active: true },
+  { id: 'm5', name: 'Veg Fried Rice', price: 150, category: 'Fast Food', kitchen: 'Fast Food', active: true },
+  { id: 'm6', name: 'Manchuria Wet', price: 135, category: 'Fast Food', kitchen: 'Fast Food', active: true },
   // Drinks
-  { id: 'm7', name: 'Coca Cola 350ml', price: 40, category: 'Drinks', kitchen: 'Franchise Kitchen', active: true },
-  { id: 'm8', name: 'Virgin Mojito', price: 120, category: 'Drinks', kitchen: 'Franchise Kitchen', active: true },
+  { id: 'm7', name: 'Coca Cola 350ml', price: 40, category: 'Drinks', kitchen: 'Restaurant', active: true },
+  { id: 'm8', name: 'Virgin Mojito', price: 120, category: 'Drinks', kitchen: 'Restaurant', active: true },
   // Ice Cream
-  { id: 'm9', name: 'Vanilla Scoop', price: 60, category: 'Ice Cream', kitchen: 'Franchise Kitchen', active: true },
-  { id: 'm10', name: 'Chocolate Sundae', price: 95, category: 'Ice Cream', kitchen: 'Franchise Kitchen', active: true },
+  { id: 'm9', name: 'Vanilla Scoop', price: 60, category: 'Ice Cream', kitchen: 'Restaurant', active: true },
+  { id: 'm10', name: 'Chocolate Sundae', price: 95, category: 'Ice Cream', kitchen: 'Restaurant', active: true },
 ];
 
 // ----------------------------------------------------
@@ -282,6 +285,11 @@ class MockDatabase {
   }
 
   public addOrderItem(orderId: string, menuItem: MenuItem, quantity: number, notes: string | null, actor: 'B1' | 'B2') {
+    const itemPrice = menuItem.price;
+    if (itemPrice === null) {
+      throw new Error('Menu item needs price verification before ordering');
+    }
+
     const order = this.orders.get(orderId);
     if (!order) return;
 
@@ -299,7 +307,7 @@ class MockDatabase {
         orderId,
         menuItemId: menuItem.id,
         itemName: menuItem.name,
-        price: menuItem.price,
+        price: itemPrice,
         quantity,
         category: menuItem.category,
         kitchen: menuItem.kitchen,
@@ -493,6 +501,16 @@ class MockDatabase {
 
   public deleteMenuItem(itemId: string) {
     this.menu = this.menu.filter(m => m.id !== itemId);
+    this.notify('menu');
+  }
+
+  public setMenuItem(item: MenuItem) {
+    const idx = this.menu.findIndex(m => m.id === item.id);
+    if (idx > -1) {
+      this.menu[idx] = item;
+    } else {
+      this.menu.push(item);
+    }
     this.notify('menu');
   }
 
@@ -719,6 +737,11 @@ export async function addOrderItem(
   notes: string | null, 
   actor: 'B1' | 'B2'
 ): Promise<void> {
+  const itemPrice = menuItem.price;
+  if (itemPrice === null) {
+    throw new Error('Menu item needs price verification before ordering');
+  }
+
   if (!isFirebaseConfigured) {
     return mockDb.addOrderItem(orderId, menuItem, quantity, notes, actor);
   }
@@ -761,7 +784,7 @@ export async function addOrderItem(
         orderId,
         menuItemId: menuItem.id,
         itemName: menuItem.name,
-        price: menuItem.price,
+        price: itemPrice,
         quantity,
         category: menuItem.category,
         kitchen: menuItem.kitchen,
@@ -775,7 +798,7 @@ export async function addOrderItem(
     // Rather than doing incremental addition (which is prone to race conditions if done purely client side),
     // let's fetch all items in the order or increment it in database.
     // Since we are in transaction, we can add the incremental price addition.
-    const addedCost = menuItem.price * quantity;
+    const addedCost = itemPrice * quantity;
     const finalSubtotal = oldSubtotal + addedCost;
 
     transaction.update(orderRef, {
@@ -982,6 +1005,25 @@ export async function closeTable(orderId: string, actor: 'B1' | 'B2'): Promise<v
 // ----------------------------------------------------
 // ADMIN MENU OPERATIONS (CRUD)
 // ----------------------------------------------------
+
+export async function importDefaultMenu(): Promise<void> {
+  const seededItems: MenuItem[] = menuSeed.map((item) => ({
+    ...item,
+    active: item.active ?? item.price !== null,
+    needsVerification: item.needsVerification ?? item.price === null,
+  }));
+
+  if (!isFirebaseConfigured) {
+    seededItems.forEach((item) => mockDb.setMenuItem(item));
+    return;
+  }
+
+  const batch = writeBatch(db);
+  seededItems.forEach((item) => {
+    batch.set(doc(db, 'menu', item.id), item);
+  });
+  await batch.commit();
+}
 
 export async function createMenuItem(item: Omit<MenuItem, 'id'>): Promise<void> {
   if (!isFirebaseConfigured) {

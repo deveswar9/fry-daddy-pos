@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { subscribeToMenu, createMenuItem, updateMenuItem, deleteMenuItem, MenuItem } from '@/firebase/services';
+import { 
+  subscribeToMenu, 
+  createMenuItem, 
+  updateMenuItem, 
+  deleteMenuItem, 
+  importDefaultMenu, 
+  MenuItem 
+} from '@/firebase/services';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, 
@@ -12,28 +19,32 @@ import {
   X,
   PlusCircle,
   HelpCircle,
-  AlertCircle
+  AlertCircle,
+  Download,
+  Loader2
 } from 'lucide-react';
+import { getCategoryBadgeStyles } from '@/features/menu/AddItemsDialog';
 
 export const MenuManagementPage: React.FC = () => {
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'All' | MenuItem['category']>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isAdding, setIsAdding] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form states
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
-  const [category, setCategory] = useState<MenuItem['category']>('Franchise');
-  const [kitchen, setKitchen] = useState<MenuItem['kitchen']>('Franchise Kitchen');
+  const [category, setCategory] = useState('Veg Starters');
+  const [kitchen, setKitchen] = useState<MenuItem['kitchen']>('Restaurant');
   const [active, setActive] = useState(true);
 
   // Edit form states
   const [editName, setEditName] = useState('');
   const [editPrice, setEditPrice] = useState('');
-  const [editCategory, setEditCategory] = useState<MenuItem['category']>('Franchise');
-  const [editKitchen, setEditKitchen] = useState<MenuItem['kitchen']>('Franchise Kitchen');
+  const [editCategory, setEditCategory] = useState('');
+  const [editKitchen, setEditKitchen] = useState<MenuItem['kitchen']>('Restaurant');
 
   useEffect(() => {
     const unsubscribe = subscribeToMenu((data) => {
@@ -51,6 +62,21 @@ export const MenuManagementPage: React.FC = () => {
       return matchesSearch && matchesCategory;
     });
   }, [menu, search, selectedCategory]);
+
+  const handleImport = async () => {
+    if (window.confirm('Are you sure you want to import the default menu seed? This will overwrite or add matching items.')) {
+      setIsImporting(true);
+      try {
+        await importDefaultMenu();
+        alert('Menu seed imported successfully!');
+      } catch (err) {
+        console.error(err);
+        alert('Failed to import menu seed.');
+      } finally {
+        setIsImporting(false);
+      }
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +103,7 @@ export const MenuManagementPage: React.FC = () => {
   const handleStartEdit = (item: MenuItem) => {
     setEditingId(item.id);
     setEditName(item.name);
-    setEditPrice(item.price.toString());
+    setEditPrice(item.price !== null ? item.price.toString() : '');
     setEditCategory(item.category);
     setEditKitchen(item.kitchen);
   };
@@ -89,7 +115,8 @@ export const MenuManagementPage: React.FC = () => {
         name: editName.trim(),
         price: parseFloat(editPrice),
         category: editCategory,
-        kitchen: editKitchen
+        kitchen: editKitchen,
+        needsVerification: false
       });
       setEditingId(null);
     } catch (err) {
@@ -108,6 +135,10 @@ export const MenuManagementPage: React.FC = () => {
   };
 
   const handleToggleActive = async (item: MenuItem) => {
+    if (item.price === null && !item.active) {
+      alert('Cannot activate item: Menu item needs a price set first.');
+      return;
+    }
     try {
       await updateMenuItem(item.id, { active: !item.active });
     } catch (err) {
@@ -115,7 +146,10 @@ export const MenuManagementPage: React.FC = () => {
     }
   };
 
-  const categories: Array<'All' | MenuItem['category']> = ['All', 'Franchise', 'Fast Food', 'Drinks', 'Ice Cream'];
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(menu.map(item => item.category)));
+    return ['All', ...cats.sort()];
+  }, [menu]);
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -128,13 +162,24 @@ export const MenuManagementPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAdding(!isAdding)}
-          className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-350 text-white rounded-xl text-sm font-bold shadow-md cursor-pointer transition-colors"
-        >
-          {isAdding ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {isAdding ? 'Cancel' : 'Add Menu Item'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleImport}
+            disabled={isImporting}
+            className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-xl text-sm font-bold border border-slate-200 dark:border-slate-800 shadow-xs cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {isImporting ? 'Importing...' : 'Import Default Menu'}
+          </button>
+
+          <button
+            onClick={() => setIsAdding(!isAdding)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-350 text-white rounded-xl text-sm font-bold shadow-md cursor-pointer transition-colors"
+          >
+            {isAdding ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            {isAdding ? 'Cancel' : 'Add Menu Item'}
+          </button>
+        </div>
       </div>
 
       {/* Add Item Panel */}
@@ -176,25 +221,36 @@ export const MenuManagementPage: React.FC = () => {
 
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-slate-400 uppercase">Category</label>
-              <select
+              <input
+                type="text"
+                list="existing-categories"
+                placeholder="e.g. Veg Starters"
                 value={category}
                 onChange={(e) => {
-                  const val = e.target.value as MenuItem['category'];
+                  const val = e.target.value;
                   setCategory(val);
                   // Automatically map kitchen target
-                  if (val === 'Fast Food') {
-                    setKitchen('Fast Food Kitchen');
+                  const lowerVal = val.toLowerCase();
+                  if (
+                    lowerVal.includes('noodles') ||
+                    lowerVal.includes('rice') ||
+                    lowerVal.includes('manchur') ||
+                    (lowerVal.includes('starters') && lowerVal.includes('veg') && !lowerVal.includes('non')) ||
+                    lowerVal.includes('chilli')
+                  ) {
+                    setKitchen('Fast Food');
                   } else {
-                    setKitchen('Franchise Kitchen');
+                    setKitchen('Restaurant');
                   }
                 }}
+                required
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-              >
-                <option value="Franchise">Franchise</option>
-                <option value="Fast Food">Fast Food</option>
-                <option value="Drinks">Drinks</option>
-                <option value="Ice Cream">Ice Cream</option>
-              </select>
+              />
+              <datalist id="existing-categories">
+                {categories.filter(c => c !== 'All').map(c => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
             </div>
 
             <div className="space-y-1.5">
@@ -204,8 +260,8 @@ export const MenuManagementPage: React.FC = () => {
                 onChange={(e) => setKitchen(e.target.value as MenuItem['kitchen'])}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
               >
-                <option value="Franchise Kitchen">Franchise Kitchen (Crispy Chicken, Burgers)</option>
-                <option value="Fast Food Kitchen">Fast Food Kitchen (Noodles, Rice, Manchuria)</option>
+                <option value="Restaurant">Restaurant (Crispy Chicken, Burgers)</option>
+                <option value="Fast Food">Fast Food (Noodles, Rice, Manchuria)</option>
               </select>
             </div>
 
@@ -303,16 +359,14 @@ export const MenuManagementPage: React.FC = () => {
                         className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
                       />
                       
-                      <select
+                      <input
+                        type="text"
+                        list="existing-categories"
+                        placeholder="Category"
                         value={editCategory}
-                        onChange={(e) => setEditCategory(e.target.value as MenuItem['category'])}
-                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs font-bold"
-                      >
-                        <option value="Franchise">Franchise</option>
-                        <option value="Fast Food">Fast Food</option>
-                        <option value="Drinks">Drinks</option>
-                        <option value="Ice Cream">Ice Cream</option>
-                      </select>
+                        onChange={(e) => setEditCategory(e.target.value)}
+                        className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                      />
                     </div>
 
                     <select
@@ -320,8 +374,8 @@ export const MenuManagementPage: React.FC = () => {
                       onChange={(e) => setEditKitchen(e.target.value as MenuItem['kitchen'])}
                       className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-xs"
                     >
-                      <option value="Franchise Kitchen">Franchise Kitchen</option>
-                      <option value="Fast Food Kitchen">Fast Food Kitchen</option>
+                      <option value="Restaurant">Restaurant</option>
+                      <option value="Fast Food">Fast Food</option>
                     </select>
 
                     <div className="flex gap-2.5 justify-end">
@@ -344,11 +398,7 @@ export const MenuManagementPage: React.FC = () => {
                   <div className="flex flex-col h-full justify-between">
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                          item.category === 'Franchise'
-                            ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
-                            : 'bg-indigo-500/10 text-indigo-500 border border-indigo-500/20'
-                        }`}>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${getCategoryBadgeStyles(item.category)}`}>
                           {item.category}
                         </span>
 
@@ -371,7 +421,13 @@ export const MenuManagementPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/80 pt-3">
-                      <span className="text-xl font-extrabold text-slate-900 dark:text-white">₹{item.price}</span>
+                      {item.price !== null ? (
+                        <span className="text-xl font-extrabold text-slate-900 dark:text-white">₹{item.price}</span>
+                      ) : (
+                        <span className="text-xs font-semibold text-rose-500 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" /> Needs Price
+                        </span>
+                      )}
                       
                       <div className="flex gap-1">
                         <button

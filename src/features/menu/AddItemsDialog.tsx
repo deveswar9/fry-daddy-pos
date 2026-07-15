@@ -3,6 +3,26 @@ import { subscribeToMenu, type MenuItem } from '@/firebase/services';
 import { motion } from 'framer-motion';
 import { X, Search, Plus, Minus, FileText, ShoppingBag } from 'lucide-react';
 
+export const getCategoryBadgeStyles = (category: string) => {
+  const cat = category.toLowerCase();
+  if (cat.includes('veg') && !cat.includes('non')) {
+    return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
+  }
+  if (cat.includes('non') || cat.includes('chicken') || cat.includes('momo') || cat.includes('wing') || cat.includes('leg') || cat.includes('starter')) {
+    return 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20';
+  }
+  if (cat.includes('pizza') || cat.includes('burger') || cat.includes('sandwich') || cat.includes('roll') || cat.includes('saver') || cat.includes('combo')) {
+    return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20';
+  }
+  if (cat.includes('drink') || cat.includes('shake') || cat.includes('mocktail')) {
+    return 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20';
+  }
+  if (cat.includes('ice cream')) {
+    return 'bg-pink-500/10 text-pink-600 dark:text-pink-400 border border-pink-500/20';
+  }
+  return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20';
+};
+
 interface AddItemsDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -12,7 +32,7 @@ interface AddItemsDialogProps {
 export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose, onAddItems }) => {
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [search, setSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'All' | MenuItem['category']>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   
   // Selection state: map of menuItemId -> { quantity: number, notes: string | null }
   const [selectedItems, setSelectedItems] = useState<Record<string, { quantity: number; notes: string | null }>>({});
@@ -89,7 +109,7 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
   const totalCost = useMemo(() => {
     return Object.entries(selectedItems).reduce((sum, [itemId, selection]) => {
       const item = menu.find((m) => m.id === itemId);
-      return sum + (item ? item.price * selection.quantity : 0);
+      return sum + (item && item.price !== null ? item.price * selection.quantity : 0);
     }, 0);
   }, [selectedItems, menu]);
 
@@ -115,7 +135,10 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
 
   if (!isOpen) return null;
 
-  const categories: Array<'All' | MenuItem['category']> = ['All', 'Franchise', 'Fast Food', 'Drinks', 'Ice Cream'];
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(menu.map((item) => item.category)));
+    return ['All', ...cats.sort()];
+  }, [menu]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -216,16 +239,12 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
                       <div className="flex-1 pr-3">
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-sm line-clamp-1">{item.name}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                            item.category === 'Franchise'
-                              ? 'bg-amber-500/10 text-amber-500'
-                              : 'bg-indigo-500/10 text-indigo-500'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${getCategoryBadgeStyles(item.category)}`}>
                             {item.category}
                           </span>
                         </div>
                         <span className="text-sm font-extrabold mt-1 text-slate-700 dark:text-slate-300 block">
-                          ₹{item.price}
+                          ₹{item.price !== null ? item.price : 'N/A'}
                         </span>
                         {isSelected && selection.notes && (
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 italic block mt-1 line-clamp-1">

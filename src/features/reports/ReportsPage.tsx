@@ -63,17 +63,10 @@ export const ReportsPage: React.FC = () => {
   
   // Category splits (cached with useMemo)
   const categorySplit = useMemo(() => {
-    const split: Record<string, number> = {
-      'Franchise': 0,
-      'Fast Food': 0,
-      'Drinks': 0,
-      'Ice Cream': 0
-    };
+    const split: Record<string, number> = {};
 
     items.forEach((item) => {
-      if (split[item.category] !== undefined) {
-        split[item.category] += item.price * item.quantity;
-      }
+      split[item.category] = (split[item.category] || 0) + item.price * item.quantity;
     });
 
     return Object.entries(split).map(([category, value]) => ({

@@ -227,8 +227,8 @@ export const DashboardPage: React.FC = () => {
                 <Store className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Inside Seating Area</h2>
-                <p className="text-xs text-slate-400 font-light">Main Hall &bull; Managed by Counter B1 (Owner)</p>
+                <h2 className="text-xl font-bold">🍽️ Restaurant Dining</h2>
+                <p className="text-xs text-slate-400 font-light">Main Hall &bull; Managed by Counter B1</p>
               </div>
             </div>
             {counter === 'B1' && (
@@ -279,8 +279,8 @@ export const DashboardPage: React.FC = () => {
                 <Trees className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Outside Seating Area</h2>
-                <p className="text-xs text-slate-400 font-light">Open Air &bull; Managed by Counter B2 (Brother)</p>
+                <h2 className="text-xl font-bold">🍔 Fast Food Dining</h2>
+                <p className="text-xs text-slate-400 font-light">Open Air &bull; Managed by Counter B2</p>
               </div>
             </div>
             {counter === 'B2' && (
@@ -324,7 +324,7 @@ export const DashboardPage: React.FC = () => {
       <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/30 flex items-start gap-3">
         <Info className="w-5 h-5 text-slate-400 shrink-0 mt-0.5" />
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-light">
-          <strong>Realtime Sync active.</strong> When payment is collected at B1 for any Inside table, it instantly registers as <em>PAID (by B1)</em> on Counter B2's dashboard. Walkie-talkie communication is no longer needed.
+          <strong>Realtime Sync active.</strong> When payment is collected at B1 for any Inside table, it instantly registers as <em>PAID (by B1)</em> on Counter B2's dashboard.
         </p>
       </div>
     </div>

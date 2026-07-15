@@ -1,0 +1,50 @@
+export type MenuKitchen = 'Restaurant' | 'Fast Food';
+
+export interface MenuSeedItem {
+  id: string;
+  category: string;
+  name: string;
+  price: number | null;
+  kitchen: MenuKitchen;
+  needsVerification?: boolean;
+  source?: string;
+  active?: boolean;
+}
+
+const f = 'Restaurant' satisfies MenuKitchen;
+const k = 'Fast Food' satisfies MenuKitchen;
+const item = (category: string, name: string, price: number | null, kitchen: MenuKitchen, id?: string): MenuSeedItem => ({
+  id: id ?? `${category}-${name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+  category,
+  name,
+  price,
+  kitchen,
+  needsVerification: price === null,
+  source: 'Uploaded Fry Daddy menu images',
+});
+
+export const menuSeed: MenuSeedItem[] = [
+  item('Veg Starters', 'French Fries Salted', 59, f), item('Veg Starters', 'Masala Fries', 69, f), item('Veg Starters', 'Peri Peri Fries', 99, f), item('Veg Starters', 'Veg Fingers-5', 99, f), item('Veg Starters', 'Veg Nuggets-10', 99, f), item('Veg Starters', 'Smiles-8', 99, f),
+  item('Non Veg Starters', 'Chicken Fingers-5', 99, f), item('Non Veg Starters', 'Chicken Nuggets-8', 99, f), item('Non Veg Starters', 'Chicken Rings-8', 99, f), item('Non Veg Starters', 'Chicken Pops', 99, f),
+  item("Momo's", 'Veg Momos - 6', 99, f), item("Momo's", 'Paneer Momos - 6', 99, f), item("Momo's", 'Chicken Momos - 6', 99, f),
+  item('Burgers', 'Veg Burger', 79, f), item('Burgers', 'Veg Cheese Burger', 99, f), item('Burgers', 'Paneer Burger', 99, f), item('Burgers', 'Paneer Patty Burger', 99, f), item('Burgers', 'Paneer Cheese Burger', 99, f), item('Burgers', 'Panneer Spl Burger', 99, f), item('Burgers', 'Fry Daddy Chicken Burger', 109, f), item('Burgers', 'Chicken Cheese Burger', 119, f),
+  item('Sandwich', 'Veg Sandwich', 59, f), item('Sandwich', 'Corn Sandwich', 89, f), item('Sandwich', 'Paneer Sandwich', 99, f), item('Sandwich', 'Chicken Sandwich', 99, f),
+  item('Mocktails', 'Mint Mojito', 59, f), item('Mocktails', 'Blue Curacao', 59, f), item('Mocktails', 'Watermelon', 59, f), item('Mocktails', 'Orange', 59, f), item('Mocktails', 'Strawberry', 59, f), item('Mocktails', 'Green Apple', 79, f), item('Mocktails', 'Black Current', 79, f), item('Mocktails', 'Blueberry', 79, f), item('Mocktails', 'Mango', 79, f),
+  item('Fry Daddy Fried Chicken', 'Popcorn - S', 129, f), item('Fry Daddy Fried Chicken', 'Popcorn - M', 239, f), item('Fry Daddy Fried Chicken', 'Popcorn - L', 329, f), item('Fry Daddy Fried Chicken', 'Strips - 4', 119, f), item('Fry Daddy Fried Chicken', 'Strips - 8', 229, f), item('Fry Daddy Fried Chicken', 'Strips - 12', 339, f), item('Fry Daddy Fried Chicken', 'Strips - 15', 359, f), item('Fry Daddy Fried Chicken', 'Wings - 6', 119, f), item('Fry Daddy Fried Chicken', 'Wings - 10', 229, f), item('Fry Daddy Fried Chicken', 'Wings - 15', 339, f), item('Fry Daddy Fried Chicken', 'Lollipops - 4', 119, f), item('Fry Daddy Fried Chicken', 'Lollipops - 8', 229, f), item('Fry Daddy Fried Chicken', 'Lollipops - 12', 339, f), item('Fry Daddy Fried Chicken', 'Legs - 2', 139, f), item('Fry Daddy Fried Chicken', 'Legs - 4', 269, f), item('Fry Daddy Fried Chicken', 'Legs - 6', 399, f),
+  item('Pizza', 'Veg Pizza - 4x4', 99, f), item('Pizza', 'Veg Pizza - 8x8', 179, f), item('Pizza', 'Corn Pizza - 4x4', 109, f), item('Pizza', 'Corn Pizza - 8x8', 199, f), item('Pizza', 'Paneer Pizza - 4x4', 119, f), item('Pizza', 'Paneer Pizza - 8x8', 209, f), item('Pizza', 'Chicken Pizza - 4x4', 119, f), item('Pizza', 'Chicken Pizza - 8x8', 209, f), item('Pizza', 'Kaju Chicken Pizza - 4x4', 139, f), item('Pizza', 'Kaju Chicken Pizza - 8x8', 229, f), item('Pizza', 'Schezwan Chicken Pizza - 4x4', 149, f), item('Pizza', 'Schezwan Chicken Pizza - 8x8', 239, f), item('Pizza', 'Fry Daddy Spl. Mix Pizza - 4x4', 129, f), item('Pizza', 'Fry Daddy Spl. Mix Pizza - 8x8', 219, f), item('Pizza Add-ons', 'Extra Cheese - 4x4', 39, f), item('Pizza Add-ons', 'Extra Cheese - 8x8', 59, f),
+  item('Combo Packs', 'Popcorn Combo (Regular Popcorn + French Fries + Mocktail)', 249, f), item('Combo Packs', 'Wings Combo (5 wings + French Fries + Mocktail)', 249, f), item('Combo Packs', 'Legs Combo (2 legs + French Fries + Mocktail)', 259, f), item('Combo Packs', 'Burger Combo (Burger + French Fries + Mocktail)', 209, f), item('Combo Packs', 'Fry Daddy Veg Combo (S Pizza + Fries + V Sandwich + V Burger)', 299, f),
+  item('Rolls', 'Veg Roll', 79, f), item('Rolls', 'Paneer Roll', 99, f), item('Rolls', 'Corn Roll', 99, f), item('Rolls', 'Chicken Roll', 99, f),
+  item('Fry Daddy Super Saver Combo', 'Super Saver (Any 1 Pizza + 4 Wings + 4 Strips + French Fries)', 399, f), item('Fry Daddy Super Saver Combo', 'Mega Saver (10 Wings + 4 Legs + 4 Strips + French Fries)', 649, f), item('Fry Daddy Super Saver Combo', 'Friends Saver (15 Wings + 6 Legs + 4 Strips + French Fries)', 999, f), item('Fry Daddy Super Saver Combo', 'Family Saver (20 Wings + 6 Legs + 4 Strips + French Fries)', 999, f),
+  item('Ice Cream', 'Vennela Ice Cream', 60, f), item('Ice Cream', 'Mixed Bowli Ice Cream', 60, f), item('Ice Cream', 'Chocolate Fudge Ice Cream', 80, f), item('Ice Cream', 'Butterscotch Fudge', 80, f), item('Ice Cream', 'Dryfruit Sunday Ice Cream', 120, f),
+  item('Milk Shake', 'Belgium Chocolate', 70, f), item('Milk Shake', 'Small Done Vanilla', 70, f), item('Milk Shake', 'Ferro Automatic', 70, f), item('Milk Shake', 'Mango Almond', 70, f), item('Milk Shake', 'Butterscotch', 70, f), item('Milk Shake', 'Coffee on the rock', 90, f), item('Milk Shake', 'Kit Kat shake', 100, f), item('Milk Shake', 'Kit kat shake with Brownie', 100, f), item('Milk Shake', 'Oreo Shake', 100, f), item('Milk Shake', 'Oreo Shake with Brownie', 100, f), item('Milk Shake', 'Dry Fruit Shake', 100, f), item('Milk Shake', 'Black Current', 90, f), item('Milk Shake', 'Choco Chips with Brownie', 120, f),
+  item('Fried Rice (Veg)', 'Veg Fried Rice', 90, k), item('Fried Rice (Veg)', 'Shazwan Veg Fried Rice', 100, k), item('Fried Rice (Veg)', 'Veg Manchurian Rice', 120, k), item('Fried Rice (Veg)', 'Butter Garlic Fried Rice', 130, k), item('Fried Rice (Veg)', 'Baby Corn Fried Rice', 130, k), item('Fried Rice (Veg)', 'Paneer Rice', 130, k), item('Fried Rice (Veg)', 'Kaju Fried Rice', 150, k), item('Fried Rice (Veg)', 'Mashroom Fried Rice', 160, k),
+  item('Fried Rice (Non - Veg)', 'Egg Fried Rice', 100, k), item('Fried Rice (Non - Veg)', 'Egg Manchurian Rice', 100, k), item('Fried Rice (Non - Veg)', 'Chicken Noodles Rice', 120, k), item('Fried Rice (Non - Veg)', 'Double Egg Fried Rice', 120, k), item('Fried Rice (Non - Veg)', 'Egg Shazwan Fried Rice', 130, k), item('Fried Rice (Non - Veg)', 'Chicken Fried Rice', 130, k), item('Fried Rice (Non - Veg)', 'Butter Garlic Chicken Fried Rice', 150, k), item('Fried Rice (Non - Veg)', 'Shazwan Chicken Rice', 150, k), item('Fried Rice (Non - Veg)', 'Double Egg Chicken Rice', 150, k), item('Fried Rice (Non - Veg)', 'Kaju Chicken Fried Rice', 170, k),
+  item('Noodles (Veg)', 'Veg Noodles', 90, k), item('Noodles (Veg)', 'Veg Shazwan Noodles', 100, k), item('Noodles (Veg)', 'Veg Manchurian Noodles', 120, k), item('Noodles (Veg)', 'Garlic Noodles', 120, k), item('Noodles (Veg)', 'Paneer Noodles', 140, k), item('Noodles (Veg)', 'Mashroom Noodles', 150, k),
+  item('Noodles (Non - Veg)', 'Egg Noodles', 100, k), item('Noodles (Non - Veg)', 'Double Egg Noodles', 120, k), item('Noodles (Non - Veg)', 'Egg Shazwan Noodles', 120, k), item('Noodles (Non - Veg)', 'Egg Manchurian Noodles', 130, k), item('Noodles (Non - Veg)', 'Chicken Noodles', 130, k), item('Noodles (Non - Veg)', 'Chicken Shazwan Noodles', 140, k), item('Noodles (Non - Veg)', 'Double Egg Chicken Noodles', 150, k),
+  item('Manchurian (Veg)', 'Veg Manchurian', 100, k), item('Manchurian (Veg)', 'Gobi Manchurian', 100, k), item('Manchurian (Veg)', 'Baby Corn Manchurian', 130, k), item('Manchurian (Veg)', 'Paneer Manchurian', 150, k), item('Manchurian (Veg)', 'Mashroom Manchurian', 190, k),
+  item('Manchurian (Non - Veg)', 'Egg Manchurian', 110, k), item('Manchurian (Non - Veg)', 'Double Egg Manchurian', 130, k), item('Manchurian (Non - Veg)', 'Chicken Manchurian', 160, k), item('Manchurian (Non - Veg)', 'Double Egg Chicken Manchurian', 180, k),
+  item('Starters (Veg - Chillis)', 'Crispy Corn', 160, k), item('Starters (Veg - Chillis)', 'Gobi 65 (Cauliflower)', 170, k), item('Starters (Veg - Chillis)', 'Gobi Chilli', 180, k), item('Starters (Veg - Chillis)', 'Baby Corn Chilli', 180, k), item('Starters (Veg - Chillis)', 'Baby Corn 65 (Cauliflower)', 190, k), item('Starters (Veg - Chillis)', 'Paneer Chilli', 200, k), item('Starters (Veg - Chillis)', 'Paneer 65', 200, k), item('Starters (Veg - Chillis)', 'Dragon Paneer', 220, k), item('Starters (Veg - Chillis)', 'Mashroom Chilli', 240, k),
+  item('Starters (Non - Veg Chilis)', 'Egg 65', 190, k), item('Starters (Non - Veg Chilis)', 'Egg Chilli', 200, k), item('Starters (Non - Veg Chilis)', 'Chilli Chicken', 220, k), item('Starters (Non - Veg Chilis)', 'Green Chilli Chicken', 240, k), item('Starters (Non - Veg Chilis)', 'Lemon Chicken', 250, k), item('Starters (Non - Veg Chilis)', 'Chicken 65', 250, k), item('Starters (Non - Veg Chilis)', 'Chicken 555', 270, k), item('Starters (Non - Veg Chilis)', 'Chicken Majestic', 270, k), item('Starters (Non - Veg Chilis)', 'Pepper Chicken', 280, k), item('Starters (Non - Veg Chilis)', 'Kaju Chicken', 300, k), item('Starters (Non - Veg Chilis)', 'VNK Chilis Chicken (SP)', 400, k),
+  item('frydaddy Special Fried Rice', "Leg's Fried Rice (1 Piece)", 140, k), item('frydaddy Special Fried Rice', 'Lolipop Fried Rice (2 Pieces)', 160, k), item('frydaddy Special Fried Rice', "Wing's Fried Rice (4 Pieces)", 200, k), item('frydaddy Special Fried Rice', "Leg's Fried Rice (2 Pieces)", 230, k), item('frydaddy Special Fried Rice', 'Lolipop Fried Rice (4 Pieces)', 240, k), item('frydaddy Special Fried Rice', "Wing's Fried Rice (6 Pieces)", 260, k),
+  item('Jumbo (Veg)', 'Veg Fried Rice + Veg Noodles + Paneer 65 + 200Ml Drink', 350, k), item('Jumbo (Non - Veg)', 'Chicken Fried Rice + Chicken Noodles + Egg 65 + 200Ml Drink', 450, k),
+];
