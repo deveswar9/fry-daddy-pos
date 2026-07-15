@@ -3,7 +3,10 @@ import { subscribeToMenu, type MenuItem } from '@/firebase/services';
 import { motion } from 'framer-motion';
 import { X, Search, Plus, Minus, FileText, ShoppingBag } from 'lucide-react';
 
-export const getCategoryBadgeStyles = (category: string) => {
+export const getCategoryBadgeStyles = (category: string | undefined | null) => {
+  if (!category) {
+    return 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20';
+  }
   const cat = category.toLowerCase();
   if (cat.includes('veg') && !cat.includes('non')) {
     return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20';
@@ -66,9 +69,11 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
   // Filtered menu items
   const filteredMenu = useMemo(() => {
     return menu.filter((item) => {
-      const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase()) ||
-                            item.category.toLowerCase().includes(search.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+      const itemName = item.name || '';
+      const itemCategory = item.category || '';
+      const matchesSearch = itemName.toLowerCase().includes(search.toLowerCase()) ||
+                            itemCategory.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = selectedCategory === 'All' || itemCategory === selectedCategory;
       return matchesSearch && matchesCategory;
     });
   }, [menu, search, selectedCategory]);
@@ -109,7 +114,8 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
   const totalCost = useMemo(() => {
     return Object.entries(selectedItems).reduce((sum, [itemId, selection]) => {
       const item = menu.find((m) => m.id === itemId);
-      return sum + (item && item.price !== null ? item.price * selection.quantity : 0);
+      const price = item && typeof item.price === 'number' ? item.price : 0;
+      return sum + (price * selection.quantity);
     }, 0);
   }, [selectedItems, menu]);
 
@@ -136,7 +142,7 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
   if (!isOpen) return null;
 
   const categories = useMemo(() => {
-    const cats = Array.from(new Set(menu.map((item) => item.category)));
+    const cats = Array.from(new Set(menu.map((item) => item.category).filter(Boolean)));
     return ['All', ...cats.sort()];
   }, [menu]);
 
@@ -238,9 +244,9 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
                     >
                       <div className="flex-1 pr-3">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-sm line-clamp-1">{item.name}</span>
+                          <span className="font-semibold text-sm line-clamp-1">{item.name || 'Unnamed Item'}</span>
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${getCategoryBadgeStyles(item.category)}`}>
-                            {item.category}
+                            {item.category || 'Uncategorized'}
                           </span>
                         </div>
                         <span className="text-sm font-extrabold mt-1 text-slate-700 dark:text-slate-300 block">
@@ -298,7 +304,7 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
                 <div className="p-3 bg-emerald-500/5 dark:bg-emerald-400/5 border border-emerald-500/20 rounded-xl">
                   <span className="text-xs text-slate-400 block font-light">Cooking for:</span>
                   <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                    {menu.find(m => m.id === focusedItemId)?.name}
+                    {menu.find(m => m.id === focusedItemId)?.name || 'Unnamed Item'}
                   </span>
                 </div>
                 

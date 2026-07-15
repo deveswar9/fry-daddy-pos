@@ -248,9 +248,9 @@ export const TableDetailsPage: React.FC = () => {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm">{item.itemName}</span>
+                            <span className="font-semibold text-sm">{item.itemName || 'Unnamed Item'}</span>
                             <span className={`px-2 py-0.2 rounded-full text-[9px] font-semibold ${getCategoryBadgeStyles(item.category)}`}>
-                              {item.category}
+                              {item.category || 'Uncategorized'}
                             </span>
                           </div>
                           <span className="text-xs text-slate-400 block font-light mt-0.5">₹{item.price} each</span>
