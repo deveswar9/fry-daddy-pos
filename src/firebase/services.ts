@@ -94,22 +94,22 @@ export interface PaymentNotification {
 // ----------------------------------------------------
 const INITIAL_TABLES: Table[] = [
   // Outside
-  { id: 'O1', number: 'O1', location: 'Outside', status: 'Available', currentOrderId: null },
-  { id: 'O2', number: 'O2', location: 'Outside', status: 'Available', currentOrderId: null },
-  { id: 'O3', number: 'O3', location: 'Outside', status: 'Available', currentOrderId: null },
-  { id: 'O4', number: 'O4', location: 'Outside', status: 'Available', currentOrderId: null },
-  { id: 'O5', number: 'O5', location: 'Outside', status: 'Available', currentOrderId: null },
-  { id: 'O6', number: 'O6', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'A1', number: 'A1', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'A2', number: 'A2', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'A3', number: 'A3', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'A4', number: 'A4', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'A5', number: 'A5', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'A6', number: 'A6', location: 'Outside', status: 'Available', currentOrderId: null },
   // Inside
-  { id: 'I1', number: 'I1', location: 'Inside', status: 'Available', currentOrderId: null },
-  { id: 'I2', number: 'I2', location: 'Inside', status: 'Available', currentOrderId: null },
-  { id: 'I3', number: 'I3', location: 'Inside', status: 'Available', currentOrderId: null },
-  { id: 'I4', number: 'I4', location: 'Inside', status: 'Available', currentOrderId: null },
-  { id: 'I5', number: 'I5', location: 'Inside', status: 'Available', currentOrderId: null },
-  { id: 'I6', number: 'I6', location: 'Inside', status: 'Available', currentOrderId: null },
-  { id: 'I7', number: 'I7', location: 'Inside', status: 'Available', currentOrderId: null },
-  { id: 'I8', number: 'I8', location: 'Inside', status: 'Available', currentOrderId: null },
-  { id: 'I9', number: 'I9', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S1', number: 'S1', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S2', number: 'S2', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S3', number: 'S3', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S4', number: 'S4', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S5', number: 'S5', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S6', number: 'S6', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S7', number: 'S7', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S8', number: 'S8', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S9', number: 'S9', location: 'Inside', status: 'Available', currentOrderId: null },
 ];
 
 const INITIAL_MENU: MenuItem[] = [
@@ -155,7 +155,13 @@ class MockDatabase {
       const storedTimelines = localStorage.getItem('r_timelines');
       const storedPaymentNotifications = localStorage.getItem('r_payment_notifications');
 
-      this.tables = storedTables ? JSON.parse(storedTables) : [...INITIAL_TABLES];
+      const tablesData = storedTables ? JSON.parse(storedTables) : [];
+      const hasOldIds = tablesData.some((t: any) => t.id.startsWith('I') || t.id.startsWith('O'));
+      if (hasOldIds || !storedTables || tablesData.length === 0) {
+        this.tables = [...INITIAL_TABLES];
+      } else {
+        this.tables = tablesData;
+      }
       this.menu = storedMenu ? JSON.parse(storedMenu) : [...INITIAL_MENU];
 
       if (storedOrders) {
@@ -1080,13 +1086,33 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
   if (!isFirebaseConfigured) return;
   try {
     const tablesSnap = await getDocs(collection(db, 'tables'));
-    if (tablesSnap.empty) {
-      console.log('Seeding Firestore tables...');
+    const tables: any[] = [];
+    tablesSnap.forEach(doc => {
+      tables.push({ id: doc.id });
+    });
+
+    const hasOldIds = tables.some((t: any) => t.id.startsWith('I') || t.id.startsWith('O'));
+
+    if (tablesSnap.empty || hasOldIds) {
+      console.log('Seeding Firestore tables (updating schema)...');
       const batch = writeBatch(db);
+      
+      // Delete old tables if they exist
+      if (hasOldIds) {
+        tables.forEach(table => {
+          if (table.id.startsWith('I') || table.id.startsWith('O')) {
+            batch.delete(doc(db, 'tables', table.id));
+          }
+        });
+      }
+
+      // Add new tables
       INITIAL_TABLES.forEach(table => {
         batch.set(doc(db, 'tables', table.id), table);
       });
+      
       await batch.commit();
+      console.log('Firestore tables seeded successfully.');
     }
 
     const menuSnap = await getDocs(collection(db, 'menu'));
