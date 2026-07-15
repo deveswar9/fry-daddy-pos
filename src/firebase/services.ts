@@ -601,9 +601,8 @@ export function subscribeToOrderItems(orderId: string, callback: (items: OrderIt
   }
 
   const q = query(
-    collection(db, 'orderItems'), 
-    where('orderId', '==', orderId),
-    orderBy('createdAt', 'desc')
+    collection(db, 'orderItems'),
+    where('orderId', '==', orderId)
   );
 
   return onSnapshot(q, (snapshot) => {
@@ -611,7 +610,11 @@ export function subscribeToOrderItems(orderId: string, callback: (items: OrderIt
     snapshot.forEach((doc) => {
       items.push({ id: doc.id, ...doc.data() } as OrderItem);
     });
+    items.sort((a, b) => b.createdAt - a.createdAt);
     callback(items);
+  }, (error) => {
+    console.error('Error listening to order items:', error);
+    callback([]);
   });
 }
 
@@ -727,14 +730,12 @@ export async function addOrderItem(
   // Let's check if the item already exists in the active orderItems (with same notes)
   // To avoid duplicate rows and combine quantities.
   // In Firebase, we can fetch matching records first.
-  const q = query(
-    itemsColl, 
-    where('orderId', '==', orderId), 
-    where('menuItemId', '==', menuItem.id),
-    where('notes', '==', notes)
-  );
-  
+  const q = query(itemsColl, where('orderId', '==', orderId));
   const querySnap = await getDocs(q);
+  const existingItemDoc = querySnap.docs.find((itemDoc) => {
+    const item = itemDoc.data() as OrderItem;
+    return item.menuItemId === menuItem.id && item.notes === notes;
+  });
 
   await runTransaction(db, async (transaction) => {
     const orderDoc = await transaction.get(orderRef);
@@ -746,9 +747,9 @@ export async function addOrderItem(
     let targetItemRef;
     let newQuantity = quantity;
 
-    if (!querySnap.empty) {
+    if (existingItemDoc) {
       // Exist, increment
-      const existingDoc = querySnap.docs[0];
+      const existingDoc = existingItemDoc;
       targetItemRef = doc(db, 'orderItems', existingDoc.id);
       const existingData = existingDoc.data() as OrderItem;
       newQuantity = existingData.quantity + quantity;
@@ -1059,6 +1060,8 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
     console.error('Failed to seed Firestore collections:', error);
   }
 }
+
+
 
 
 
