@@ -631,8 +631,22 @@ export function subscribeToTables(callback: (tables: Table[]) => void) {
       snapshot.forEach((doc) => {
         tables.push({ id: doc.id, ...doc.data() } as Table);
       });
-      // Sort tables to maintain consistent order
-      tables.sort((a, b) => a.id.localeCompare(b.id));
+      // Sort tables to maintain consistent order (numeric aware sorting: S1, S2, ..., S10, S11, S12)
+      tables.sort((a, b) => {
+        const aMatch = a.id.match(/^([A-Za-z]+)(\d+)$/);
+        const bMatch = b.id.match(/^([A-Za-z]+)(\d+)$/);
+        if (aMatch && bMatch) {
+          const aLetter = aMatch[1];
+          const aNum = parseInt(aMatch[2], 10);
+          const bLetter = bMatch[1];
+          const bNum = parseInt(bMatch[2], 10);
+          if (aLetter !== bLetter) {
+            return aLetter.localeCompare(bLetter);
+          }
+          return aNum - bNum;
+        }
+        return a.id.localeCompare(b.id);
+      });
       callback(tables);
     },
     async (error) => {
