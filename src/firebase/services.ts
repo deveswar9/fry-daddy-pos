@@ -543,6 +543,11 @@ class MockDatabase {
     this.notify('menu');
   }
 
+  public clearMenu() {
+    this.menu = [];
+    this.notify('menu');
+  }
+
   public getAllOrders(): Order[] {
     return Array.from(this.orders.values());
   }
@@ -1094,15 +1099,38 @@ export async function importMenuFromList(items: Omit<MenuItem, 'id'>[]): Promise
   });
 
   if (!isFirebaseConfigured) {
+    mockDb.clearMenu();
     mappedItems.forEach((item) => mockDb.setMenuItem(item));
     return;
   }
 
-  const batch = writeBatch(db);
-  mappedItems.forEach((item) => {
-    batch.set(doc(db, 'menu', item.id), item);
+  // Fetch all existing menu items to delete them
+  const menuSnap = await getDocs(collection(db, 'menu'));
+
+  // Prepare chunked write batch operations
+  const ops: Array<{ type: 'set' | 'delete'; ref: any; data?: any }> = [];
+
+  menuSnap.forEach((docSnap) => {
+    ops.push({ type: 'delete', ref: doc(db, 'menu', docSnap.id) });
   });
-  await batch.commit();
+
+  mappedItems.forEach((item) => {
+    ops.push({ type: 'set', ref: doc(db, 'menu', item.id), data: item });
+  });
+
+  const chunkSize = 400;
+  for (let i = 0; i < ops.length; i += chunkSize) {
+    const chunk = ops.slice(i, i + chunkSize);
+    const batch = writeBatch(db);
+    chunk.forEach((op) => {
+      if (op.type === 'delete') {
+        batch.delete(op.ref);
+      } else if (op.type === 'set') {
+        batch.set(op.ref, op.data);
+      }
+    });
+    await batch.commit();
+  }
 }
 
 export async function createMenuItem(item: Omit<MenuItem, 'id'>): Promise<void> {
