@@ -7,7 +7,7 @@ We have successfully built and verified a production-ready, high-fidelity **Rest
 ## 🚀 Accomplishments & Features Completed
 
 ### 1. Unified Real-time Seating Map (Dashboard)
-- **Interactive Seating Grid**: Renders the exact table layout (**I1–I9** for Inside, **O1–O6** for Outside).
+- **Interactive Seating Grid**: Renders the exact table layout (**S1–S12** for Inside, **A1–A6** for Outside).
 - **Status Color Coding**: 
   - **Green (Available)**: Glassy emerald
   - **Yellow (Occupied)**: Soft amber

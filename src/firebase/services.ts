@@ -124,6 +124,9 @@ const INITIAL_TABLES: Table[] = [
   { id: 'S7', number: 'S7', location: 'Inside', status: 'Available', currentOrderId: null },
   { id: 'S8', number: 'S8', location: 'Inside', status: 'Available', currentOrderId: null },
   { id: 'S9', number: 'S9', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S10', number: 'S10', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S11', number: 'S11', location: 'Inside', status: 'Available', currentOrderId: null },
+  { id: 'S12', number: 'S12', location: 'Inside', status: 'Available', currentOrderId: null },
 ];
 
 const INITIAL_MENU: MenuItem[] = [
@@ -1322,6 +1325,19 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
       
       await batch.commit();
       console.log('Firestore tables seeded successfully.');
+    } else {
+      // Append any missing tables from INITIAL_TABLES to Firestore dynamically
+      const existingIds = new Set(tables.map(t => t.id));
+      const missingTables = INITIAL_TABLES.filter(t => !existingIds.has(t.id));
+      if (missingTables.length > 0) {
+        console.log(`Adding ${missingTables.length} missing tables to Firestore...`);
+        const batch = writeBatch(db);
+        missingTables.forEach(table => {
+          batch.set(doc(db, 'tables', table.id), table);
+        });
+        await batch.commit();
+        console.log('Missing tables appended successfully.');
+      }
     }
 
     const menuSnap = await getDocs(collection(db, 'menu'));
