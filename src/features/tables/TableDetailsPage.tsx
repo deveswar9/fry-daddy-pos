@@ -382,7 +382,7 @@ export const TableDetailsPage: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-slate-400 font-light">Counter Assignment</span>
                   <span className="font-bold">
-                    {isB1InsideRule ? 'Counter B1' : 'Counter B2'}
+                    {isB1InsideRule ? 'Restaurant Counter' : 'Fast Food Counter'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -396,7 +396,7 @@ export const TableDetailsPage: React.FC = () => {
                   <div className="p-3.5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 text-xs">
                     <span className="text-slate-400 font-light block mb-1">Payment Received:</span>
                     <p className="text-indigo-600 dark:text-indigo-400 font-semibold mb-0.5">
-                      Collected at Counter {order.collectedBy}
+                      Collected at {order.collectedBy === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}
                     </p>
                     {order.paidAt && (
                       <span className="text-[10px] text-slate-400 font-light block">
@@ -413,8 +413,8 @@ export const TableDetailsPage: React.FC = () => {
               <div className="p-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed font-light">
-                  <strong>Notice:</strong> This is an <em>{table.location} Table</em>. Payment must be collected at <strong>Counter {isB1InsideRule ? 'B1' : 'B2'}</strong>. 
-                  You can still add items or request the bill, but payment button is locked for Counter {counter}.
+                  <strong>Notice:</strong> This is an <em>{table.location} Table</em>. Payment must be collected at <strong>{isB1InsideRule ? 'Restaurant Counter' : 'Fast Food Counter'}</strong>. 
+                  You can still add items or request the bill, but payment button is locked for {counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}.
                 </div>
               </div>
             )}
@@ -439,7 +439,7 @@ export const TableDetailsPage: React.FC = () => {
                       ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200/50 dark:border-slate-850 cursor-not-allowed shadow-none'
                       : 'bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-350 text-white'
                   }`}
-                  title={!hasPaymentPermission ? `Payment must be collected by Counter ${isB1InsideRule ? 'B1' : 'B2'}` : 'Record Payment'}
+                  title={!hasPaymentPermission ? `Payment must be collected by ${isB1InsideRule ? 'Restaurant Counter' : 'Fast Food Counter'}` : 'Record Payment'}
                 >
                   <CreditCard className="w-4 h-4" /> Collect Payment (₹{order.total})
                 </button>
@@ -487,7 +487,7 @@ export const TableDetailsPage: React.FC = () => {
 
               <p className="text-slate-500 dark:text-slate-400 text-sm font-light leading-relaxed mb-6">
                 Are you sure you want to mark Table {table.number} as paid? 
-                This will log payment collected by <strong>Counter {counter}</strong> and notify other counter instantly.
+                This will log payment collected by <strong>{counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}</strong> and notify the other counter instantly.
               </p>
 
               <div className="space-y-4 max-h-[300px] overflow-y-auto mb-6 pr-1 border-y border-slate-150 dark:border-slate-800 py-4 text-xs font-mono">
@@ -539,7 +539,7 @@ export const TableDetailsPage: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400 font-light">Collected By:</span>
-                  <span className="font-bold text-emerald-600 dark:text-emerald-400">Counter {counter}</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">{counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}</span>
                 </div>
               </div>
 

@@ -23,7 +23,7 @@ const ProtectedRoutes: React.FC = () => {
     );
   }
 
-  // If counter B1/B2 session not selected, force login
+  // If Restaurant / Fast Food Counter session not selected, force login
   if (!counter) {
     return <Navigate to="/login" replace />;
   }

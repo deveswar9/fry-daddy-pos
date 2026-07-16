@@ -143,7 +143,7 @@ export const Layout: React.FC = () => {
                 title="Active counter"
               >
                 <span className={`w-2 h-2 rounded-full ${counter === 'B1' ? 'bg-emerald-500' : 'bg-indigo-500'} animate-pulse`} />
-                Counter {counter}
+                {counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}
               </div>
             </div>
 
@@ -244,8 +244,8 @@ export const Layout: React.FC = () => {
                     <span className="text-slate-400 font-light block text-xs">Paid At :</span>
                     <span className="font-extrabold text-sm text-slate-800 dark:text-slate-200">
                       {activePopup.paidByCounter === 'B1' 
-                        ? 'Restaurant Billing (B1)' 
-                        : (activePopup.paidByCounter === 'B2' ? 'Fast Food Billing (B2)' : `Counter ${activePopup.paidByCounter}`)}
+                        ? 'Restaurant Counter' 
+                        : (activePopup.paidByCounter === 'B2' ? 'Fast Food Counter' : `Counter ${activePopup.paidByCounter}`)}
                     </span>
                   </div>
                 </div>

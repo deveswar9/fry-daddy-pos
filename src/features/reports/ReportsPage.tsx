@@ -160,11 +160,11 @@ export const ReportsPage: React.FC = () => {
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Counter Splits</span>
             <div className="mt-2 text-xs font-bold space-y-0.5">
               <div className="flex justify-between gap-6 text-emerald-600 dark:text-emerald-400">
-                <span>Counter B1:</span>
+                <span>Restaurant Counter:</span>
                 <span>₹{b1Revenue}</span>
               </div>
               <div className="flex justify-between gap-6 text-indigo-650 dark:text-indigo-400">
-                <span>Counter B2:</span>
+                <span>Fast Food Counter:</span>
                 <span>₹{b2Revenue}</span>
               </div>
             </div>
@@ -283,7 +283,7 @@ export const ReportsPage: React.FC = () => {
                           ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' 
                           : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
                       }`}>
-                        Counter {order.collectedBy}
+                        {order.collectedBy === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}
                       </span>
                     </td>
                     <td className="py-3 px-4 font-light text-slate-400 text-xs">
