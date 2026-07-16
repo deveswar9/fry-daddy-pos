@@ -174,6 +174,11 @@ export const TableDetailsPage: React.FC = () => {
   const isB2OutsideRule = table.location === 'Outside';
   const hasPaymentPermission = (counter === 'B1' && isB1InsideRule) || (counter === 'B2' && isB2OutsideRule);
 
+  const restaurantItems = items.filter(item => item.kitchen === 'Restaurant');
+  const fastFoodItems = items.filter(item => item.kitchen === 'Fast Food');
+  const restaurantSubtotal = restaurantItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const fastFoodSubtotal = fastFoodItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* Header Back Link */}
@@ -485,14 +490,52 @@ export const TableDetailsPage: React.FC = () => {
                 This will log payment collected by <strong>Counter {counter}</strong> and notify other counter instantly.
               </p>
 
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 mb-6 font-mono text-sm space-y-1">
+              <div className="space-y-4 max-h-[300px] overflow-y-auto mb-6 pr-1 border-y border-slate-150 dark:border-slate-800 py-4 text-xs font-mono">
+                {restaurantItems.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Restaurant Items (B1)</h4>
+                    <div className="space-y-1.5 pl-2 mb-3">
+                      {restaurantItems.map((item) => (
+                        <div key={item.id} className="flex justify-between text-slate-800 dark:text-slate-200">
+                          <span>✓ {item.itemName} (x{item.quantity})</span>
+                          <span>₹{item.price * item.quantity}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between font-bold border-t border-dashed border-slate-200 dark:border-slate-800 pt-1 text-slate-900 dark:text-white mt-1">
+                        <span>Restaurant Subtotal:</span>
+                        <span>₹{restaurantSubtotal}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {fastFoodItems.length > 0 && (
+                  <div>
+                    <h4 className="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Fast Food Items (B2)</h4>
+                    <div className="space-y-1.5 pl-2">
+                      {fastFoodItems.map((item) => (
+                        <div key={item.id} className="flex justify-between text-slate-800 dark:text-slate-200">
+                          <span>✓ {item.itemName} (x{item.quantity})</span>
+                          <span>₹{item.price * item.quantity}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between font-bold border-t border-dashed border-slate-200 dark:border-slate-800 pt-1 text-slate-900 dark:text-white mt-1">
+                        <span>Fast Food Subtotal:</span>
+                        <span>₹{fastFoodSubtotal}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 mb-6 font-mono text-sm space-y-1">
                 <div className="flex justify-between">
                   <span className="text-slate-400 font-light">Table:</span>
                   <span className="font-bold">{table.number}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-400 font-light">Amount:</span>
-                  <span className="font-bold text-slate-900 dark:text-white">₹{order.total}</span>
+                <div className="flex justify-between border-t border-dashed border-slate-200 dark:border-slate-800 pt-1.5 mt-1.5">
+                  <span className="text-slate-400 font-light">Grand Total:</span>
+                  <span className="font-black text-slate-900 dark:text-white text-lg">₹{order.total}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-400 font-light">Collected By:</span>

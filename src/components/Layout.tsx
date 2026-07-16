@@ -1,7 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
+import {
+  subscribeToPaymentNotifications,
+  acknowledgePaymentNotification,
+  PaymentNotification
+} from '@/firebase/services';
 import {
   LayoutDashboard,
   BookOpen,
@@ -11,6 +16,8 @@ import {
   LogOut,
   Clock,
   ChefHat,
+  Check,
+  CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -19,6 +26,36 @@ export const Layout: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const [activePopup, setActivePopup] = useState<PaymentNotification | null>(null);
+
+  useEffect(() => {
+    if (!counter || counter !== 'B2') {
+      setActivePopup(null);
+      return;
+    }
+
+    const unsubscribe = subscribeToPaymentNotifications('B2', (notifications) => {
+      // Find the first unread notification
+      const unread = notifications.find(n => !n.read);
+      if (unread) {
+        setActivePopup(unread);
+      } else {
+        setActivePopup(null);
+      }
+    });
+
+    return unsubscribe;
+  }, [counter]);
+
+  const handleAcknowledge = async () => {
+    if (!activePopup) return;
+    try {
+      await acknowledgePaymentNotification(activePopup.id);
+    } catch (e) {
+      console.error('Failed to acknowledge notification:', e);
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -166,6 +203,78 @@ export const Layout: React.FC = () => {
         </div>
       </footer>
       <div className="md:hidden h-16" />
+
+      {/* Realtime Cross-Counter Payment Popup Modal */}
+      <AnimatePresence>
+        {activePopup && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl overflow-hidden text-slate-950 dark:text-white z-10"
+            >
+              <div className="flex items-center gap-3 text-emerald-500 dark:text-emerald-400 mb-4">
+                <div className="p-2 bg-emerald-500/10 rounded-xl">
+                  <CreditCard className="w-6 h-6 animate-pulse" />
+                </div>
+                <h3 className="text-xl font-bold">Payment Received</h3>
+              </div>
+
+              <div className="space-y-4 text-sm leading-relaxed mb-6 font-sans">
+                <div className="space-y-1">
+                  <span className="text-slate-400 font-light block text-xs">Table :</span>
+                  <span className="font-extrabold text-base">{activePopup.tableId}</span>
+                </div>
+
+                <p className="text-slate-500 dark:text-slate-400 text-xs font-light">
+                  The following Fast Food items have already been paid at Restaurant Billing Counter (B1).
+                </p>
+
+                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200">
+                  {activePopup.itemNames.map((name, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <span className="text-emerald-500">✓</span>
+                      <span>{name}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="space-y-1 font-mono text-xs text-slate-650 dark:text-slate-350">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Fast Food Total :</span>
+                    <span className="font-bold text-slate-900 dark:text-white">₹{activePopup.total}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Payment Method :</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">UPI</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Paid By :</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">Restaurant Billing Counter (B1)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleAcknowledge}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-350 text-white text-sm font-bold shadow-md cursor-pointer transition-colors"
+                >
+                  OK
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

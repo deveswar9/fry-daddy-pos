@@ -471,9 +471,12 @@ class MockDatabase {
     timeline.push(tlEntry);
     this.timelines.set(orderId, timeline);
 
-    const fastFoodItems = (this.orderItems.get(orderId) || []).filter((item) => item.category === 'Fast Food');
-    if (collectedBy === 'B1' && fastFoodItems.length > 0) {
-      const itemNames = fastFoodItems.map((item) => `${item.quantity}x ${item.itemName}`);
+    const itemsList = this.orderItems.get(orderId) || [];
+    const fastFoodItems = itemsList.filter((item) => item.kitchen === 'Fast Food');
+    const restaurantItems = itemsList.filter((item) => item.kitchen === 'Restaurant');
+
+    if (collectedBy === 'B1' && fastFoodItems.length > 0 && restaurantItems.length > 0) {
+      const itemNames = fastFoodItems.map((item) => item.itemName);
       const notification: PaymentNotification = {
         id: 'PAY_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
         targetCounter: 'B2',
@@ -546,6 +549,14 @@ class MockDatabase {
   public clearMenu() {
     this.menu = [];
     this.notify('menu');
+  }
+
+  public acknowledgeNotification(notificationId: string) {
+    this.paymentNotifications = this.paymentNotifications.map(n => 
+      n.id === notificationId ? { ...n, read: true } : n
+    );
+    this.notify('paymentNotifications:B2');
+    this.notify('paymentNotifications:B1');
   }
 
   public getAllOrders(): Order[] {
@@ -984,10 +995,13 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
   const itemsQuery = query(collection(db, 'orderItems'), where('orderId', '==', orderId));
   const itemSnapshot = await getDocs(itemsQuery);
   const fastFoodItems: OrderItem[] = [];
+  const restaurantItems: OrderItem[] = [];
   itemSnapshot.forEach((itemDoc) => {
     const item = { id: itemDoc.id, ...itemDoc.data() } as OrderItem;
-    if (item.category === 'Fast Food') {
+    if (item.kitchen === 'Fast Food') {
       fastFoodItems.push(item);
+    } else if (item.kitchen === 'Restaurant') {
+      restaurantItems.push(item);
     }
   });
 
@@ -1018,8 +1032,8 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
       timestamp: now
     });
 
-    if (collectedBy === 'B1' && fastFoodItems.length > 0) {
-      const itemNames = fastFoodItems.map((item) => `${item.quantity}x ${item.itemName}`);
+    if (collectedBy === 'B1' && fastFoodItems.length > 0 && restaurantItems.length > 0) {
+      const itemNames = fastFoodItems.map((item) => item.itemName);
       const notificationRef = doc(collection(db, 'paymentNotifications'));
       transaction.set(notificationRef, {
         targetCounter: 'B2',
@@ -1062,6 +1076,15 @@ export async function closeTable(orderId: string, actor: 'B1' | 'B2'): Promise<v
       lastPaymentTimestamp: null
     });
   });
+}
+
+export async function acknowledgePaymentNotification(notificationId: string): Promise<void> {
+  if (!isFirebaseConfigured) {
+    mockDb.acknowledgeNotification(notificationId);
+    return;
+  }
+  const ref = doc(db, 'paymentNotifications', notificationId);
+  await updateDoc(ref, { read: true });
 }
 
 // ----------------------------------------------------

@@ -25,7 +25,8 @@ We have successfully built and verified a production-ready, high-fidelity **Rest
 
 ### 3. Real-time Payment Flow & Cross-Counter Synchronization
 - **Payment Assignment**: Payments for Inside tables are collected by **Counter B1 (Owner)**, and Outside tables by **Counter B2 (Brother)**.
-- **Immediate Push Notifications**: When a payment is recorded at B1, B2 instantly sees the table color flip to Blue and shows: `PAID (by B1)` with a live timestamp, eliminating walkie-talkie communication.
+- **Collect Payment Breakdown**: When clicking "Collect Payment", the confirmation dialog groups and displays items separately under **Restaurant Items (B1)** and **Fast Food Items (B2)**, showing line subtotals and the overall Grand Total.
+- **Immediate Push Notifications & Popup Modal**: When a mixed order is paid at B1, B2 instantly receives a modal popup window showing the paid Fast Food items, total, and payment method. Clicking OK marks the notification as read/acknowledged in Firestore, closing it permanently.
 - **Table Clearing**: Allows counters to clear the table, reset the database reference to `Available`, and archive the order.
 
 ### 4. Dispute Tracking Timeline
