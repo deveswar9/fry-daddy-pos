@@ -162,7 +162,16 @@ class MockDatabase {
       } else {
         this.tables = tablesData;
       }
-      this.menu = storedMenu ? JSON.parse(storedMenu) : [...INITIAL_MENU];
+      const parsedMenu = storedMenu ? JSON.parse(storedMenu) : [...INITIAL_MENU];
+      this.menu = parsedMenu.map((item: any) => {
+        let kitchen = item.kitchen;
+        if (kitchen === 'Fast Food Kitchen') {
+          kitchen = 'Fast Food';
+        } else if (kitchen === 'Franchise Kitchen') {
+          kitchen = 'Restaurant';
+        }
+        return { ...item, kitchen };
+      });
 
       if (storedOrders) {
         const parsedOrders = JSON.parse(storedOrders);
@@ -170,7 +179,21 @@ class MockDatabase {
       }
       if (storedItems) {
         const parsedItems = JSON.parse(storedItems);
-        this.orderItems = new Map(Object.entries(parsedItems));
+        const migratedItems: Record<string, OrderItem[]> = {};
+        Object.entries(parsedItems).forEach(([orderId, itemsList]) => {
+          if (Array.isArray(itemsList)) {
+            migratedItems[orderId] = itemsList.map((item: any) => {
+              let kitchen = item.kitchen;
+              if (kitchen === 'Fast Food Kitchen') {
+                kitchen = 'Fast Food';
+              } else if (kitchen === 'Franchise Kitchen') {
+                kitchen = 'Restaurant';
+              }
+              return { ...item, kitchen };
+            });
+          }
+        });
+        this.orderItems = new Map(Object.entries(migratedItems));
       }
       if (storedTimelines) {
         const parsedTimelines = JSON.parse(storedTimelines);
@@ -580,8 +603,22 @@ export function subscribeToMenu(callback: (menu: MenuItem[]) => void) {
     collection(db, 'menu'),
     (snapshot) => {
       const menu: MenuItem[] = [];
-      snapshot.forEach((doc) => {
-        menu.push({ id: doc.id, ...doc.data() } as MenuItem);
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        let kitchen = data.kitchen;
+        let needsUpdate = false;
+        if (kitchen === 'Fast Food Kitchen') {
+          kitchen = 'Fast Food';
+          needsUpdate = true;
+        } else if (kitchen === 'Franchise Kitchen') {
+          kitchen = 'Restaurant';
+          needsUpdate = true;
+        }
+        if (needsUpdate) {
+          const docRef = doc(db, 'menu', docSnap.id);
+          updateDoc(docRef, { kitchen }).catch(err => console.error('Failed to migrate kitchen target in menu:', err));
+        }
+        menu.push({ id: docSnap.id, ...data, kitchen } as MenuItem);
       });
       callback(menu);
     },
@@ -631,8 +668,22 @@ export function subscribeToOrderItems(orderId: string, callback: (items: OrderIt
 
   return onSnapshot(q, (snapshot) => {
     const items: OrderItem[] = [];
-    snapshot.forEach((doc) => {
-      items.push({ id: doc.id, ...doc.data() } as OrderItem);
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      let kitchen = data.kitchen;
+      let needsUpdate = false;
+      if (kitchen === 'Fast Food Kitchen') {
+        kitchen = 'Fast Food';
+        needsUpdate = true;
+      } else if (kitchen === 'Franchise Kitchen') {
+        kitchen = 'Restaurant';
+        needsUpdate = true;
+      }
+      if (needsUpdate) {
+        const docRef = doc(db, 'orderItems', docSnap.id);
+        updateDoc(docRef, { kitchen }).catch(err => console.error('Failed to migrate kitchen target in order item:', err));
+      }
+      items.push({ id: docSnap.id, ...data, kitchen } as OrderItem);
     });
     items.sort((a, b) => b.createdAt - a.createdAt);
     callback(items);
@@ -1074,8 +1125,22 @@ export async function getReportsData(): Promise<{ orders: Order[], items: OrderI
   // Fetch all order items
   const itemsSnap = await getDocs(collection(db, 'orderItems'));
   const items: OrderItem[] = [];
-  itemsSnap.forEach(d => {
-    items.push({ id: d.id, ...d.data() } as OrderItem);
+  itemsSnap.forEach(docSnap => {
+    const data = docSnap.data();
+    let kitchen = data.kitchen;
+    let needsUpdate = false;
+    if (kitchen === 'Fast Food Kitchen') {
+      kitchen = 'Fast Food';
+      needsUpdate = true;
+    } else if (kitchen === 'Franchise Kitchen') {
+      kitchen = 'Restaurant';
+      needsUpdate = true;
+    }
+    if (needsUpdate) {
+      const docRef = doc(db, 'orderItems', docSnap.id);
+      updateDoc(docRef, { kitchen }).catch(err => console.error('Failed to migrate kitchen target in reports:', err));
+    }
+    items.push({ id: docSnap.id, ...data, kitchen } as OrderItem);
   });
 
   return { orders, items };

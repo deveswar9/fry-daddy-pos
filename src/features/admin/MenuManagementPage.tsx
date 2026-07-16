@@ -27,6 +27,7 @@ import { getCategoryBadgeStyles } from '@/features/menu/AddItemsDialog';
 
 export const MenuManagementPage: React.FC = () => {
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isAdding, setIsAdding] = useState(false);
@@ -48,7 +49,11 @@ export const MenuManagementPage: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = subscribeToMenu((data) => {
-      setMenu(data);
+      // Defer state updates to allow Framer Motion's mount transition to complete smoothly
+      setTimeout(() => {
+        setMenu(data);
+        setIsLoading(false);
+      }, 0);
     });
     return unsubscribe;
   }, []);
@@ -150,6 +155,23 @@ export const MenuManagementPage: React.FC = () => {
     const cats = Array.from(new Set(menu.map(item => item.category)));
     return ['All', ...cats.sort()];
   }, [menu]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6 py-6 animate-pulse">
+        {/* Title skeleton */}
+        <div className="h-10 w-48 bg-slate-200 dark:bg-slate-900 rounded-xl" />
+        {/* Filter skeleton */}
+        <div className="h-14 bg-slate-200 dark:bg-slate-900/60 border border-slate-200/50 dark:border-slate-800/80 rounded-2xl" />
+        {/* Card grid skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-36 bg-slate-200 dark:bg-slate-900 rounded-3xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 pb-12">

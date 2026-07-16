@@ -20,6 +20,7 @@ We have successfully built and verified a production-ready, high-fidelity **Rest
 - **Menu Categorization**: Organizes items into categories like **Franchise** (Burger, Sandwich, Crispy Chicken) and **Fast Food** (Noodles, Rice, Manchuria).
 - **Single-Bill Enforcement**: Customers can order from both menus, and the app automatically appends additions into one order to prevent duplicate bills.
 - **Searchable Menu Dialog**: A sleek sliding drawer supporting instant search, inline quantity adjustments, and special preparation notes.
+- **Kitchen Label & Data Migration**: Standardized kitchen targets to `'Fast Food'` (originally `'Fast Food Kitchen'`) and `'Restaurant'` (originally `'Franchise Kitchen'`). Stale/outdated records in local storage or Firebase Firestore are automatically migrated upon snapshot subscription.
 
 ### 3. Real-time Payment Flow & Cross-Counter Synchronization
 - **Payment Assignment**: Payments for Inside tables are collected by **Counter B1 (Owner)**, and Outside tables by **Counter B2 (Brother)**.

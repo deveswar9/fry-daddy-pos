@@ -139,12 +139,12 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
     onClose();
   };
 
-  if (!isOpen) return null;
-
   const categories = useMemo(() => {
     const cats = Array.from(new Set(menu.map((item) => item.category).filter(Boolean)));
     return ['All', ...cats.sort()];
   }, [menu]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

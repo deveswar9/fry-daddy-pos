@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import { auth, isFirebaseConfigured } from '@/firebase/config';
 
 export type CounterRole = 'B1' | 'B2'; // B1 = Inside, B2 = Outside
@@ -91,7 +91,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (isFirebaseConfigured && auth) {
-        await signInWithEmailAndPassword(auth, account.email, password);
+        try {
+          await signInWithEmailAndPassword(auth, account.email, password);
+        } catch (fbError: any) {
+          // If login fails because user does not exist in Firebase, auto-create it with the demo credentials.
+          const isUserNotFoundError = 
+            fbError.code === 'auth/user-not-found' || 
+            fbError.code === 'auth/invalid-credential' || 
+            fbError.code === 'auth/invalid-login-credentials' ||
+            String(fbError.message || '').includes('user-not-found') ||
+            String(fbError.message || '').includes('INVALID_LOGIN_CREDENTIALS');
+          
+          if (password === account.demoPassword && isUserNotFoundError) {
+            try {
+              await createUserWithEmailAndPassword(auth, account.email, password);
+            } catch (createError) {
+              console.error('Failed to auto-create account in Firebase Auth:', createError);
+              throw fbError;
+            }
+          } else {
+            throw fbError;
+          }
+        }
       } else if (!account.demoPassword || account.demoPassword !== password) {
         throw new Error('Invalid username or password.');
       }
