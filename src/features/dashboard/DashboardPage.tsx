@@ -120,16 +120,16 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {counter === 'B2' && paymentNotifications.length > 0 && (
+      {paymentNotifications.length > 0 && (
         <div className="rounded-3xl border border-indigo-500/25 bg-indigo-500/5 dark:bg-indigo-400/10 p-5 shadow-xs">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl">
               <BellRing className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Outside Food Payment Alerts</h2>
+              <h2 className="text-lg font-bold">Cross-Counter Payment Alerts</h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 font-light">
-                Fast-food items paid at Counter B1 are shown here for Counter B2.
+                Items paid at the other counter that belong to Counter {counter} are listed here.
               </p>
             </div>
           </div>
@@ -142,14 +142,21 @@ export const DashboardPage: React.FC = () => {
                 className="text-left rounded-2xl border border-indigo-500/20 bg-white/80 dark:bg-slate-950/60 p-4 hover:border-indigo-500/50 transition-colors cursor-pointer"
               >
                 <div className="flex justify-between gap-3 text-xs text-slate-400 mb-2">
-                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">Table {notification.tableId}</span>
+                  <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+                    Table {(() => {
+                      const raw = notification.tableName || notification.tableId || '';
+                      if (raw.startsWith('T')) return raw;
+                      if (/^\d+$/.test(raw)) return 'T' + raw.padStart(2, '0');
+                      return raw;
+                    })()}
+                  </span>
                   <span>{formatNotificationTime(notification.createdAt)}</span>
                 </div>
                 <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-                  {notification.message}
+                  {notification.message || `Bill paid at Counter ${notification.paidByCounter} for: ${(notification.items || []).join(', ')}`}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                  Outside food total: Rs.{notification.total}
+                  Amount: ₹{notification.paidAmount ?? notification.total}
                 </p>
               </button>
             ))}

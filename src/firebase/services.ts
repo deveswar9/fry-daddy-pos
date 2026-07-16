@@ -78,16 +78,30 @@ export interface TimelineEntry {
 
 export interface PaymentNotification {
   id: string;
-  targetCounter: 'B1' | 'B2';
-  sourceCounter: 'B1' | 'B2';
   orderId: string;
   tableId: string;
-  itemNames: string[];
-  total: number;
-  message: string;
+  tableName: string;
+  paidByCounter: string;
+  targetCounter: string;
+  paymentMethod: string;
+  paidAmount: number;
+  items: string[];
+  status: 'pending' | 'acknowledged';
   createdAt: number;
+  acknowledgedAt: number | null;
   read: boolean;
+
+  // Backwards compatibility fields:
+  sourceCounter?: string;
+  itemNames?: string[];
+  total?: number;
+  message?: string;
 }
+
+export const KITCHEN_TO_COUNTER: Record<string, string> = {
+  'Restaurant': 'B1',
+  'Fast Food': 'B2'
+};
 
 // ----------------------------------------------------
 // PRE-SEEDED DATA
@@ -472,25 +486,53 @@ class MockDatabase {
     this.timelines.set(orderId, timeline);
 
     const itemsList = this.orderItems.get(orderId) || [];
-    const fastFoodItems = itemsList.filter((item) => item.kitchen === 'Fast Food');
-    const restaurantItems = itemsList.filter((item) => item.kitchen === 'Restaurant');
+    const tableObj = this.getTable(order.tableId);
+    const tableName = tableObj ? tableObj.number : order.tableId;
 
-    if (collectedBy === 'B1' && fastFoodItems.length > 0 && restaurantItems.length > 0) {
-      const itemNames = fastFoodItems.map((item) => item.itemName);
-      const notification: PaymentNotification = {
-        id: 'PAY_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-        targetCounter: 'B2',
-        sourceCounter: collectedBy,
-        orderId,
-        tableId: order.tableId,
-        itemNames,
-        total: fastFoodItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
-        message: `Bill paid at Counter ${collectedBy} for outside food: ${itemNames.join(', ')}`,
-        createdAt: now,
-        read: false,
-      };
-      this.paymentNotifications.unshift(notification);
-      this.notify('paymentNotifications:B2');
+    const itemsByCounter: Record<string, OrderItem[]> = {};
+    itemsList.forEach((item) => {
+      const target = KITCHEN_TO_COUNTER[item.kitchen] || 'B1';
+      if (!itemsByCounter[target]) {
+        itemsByCounter[target] = [];
+      }
+      itemsByCounter[target].push(item);
+    });
+
+    const isMixedOrder = Object.keys(itemsByCounter).length > 1;
+
+    if (isMixedOrder) {
+      Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
+        if (targetCounter !== collectedBy && list.length > 0) {
+          const itemNames = list.map((item) => item.itemName);
+          const paidAmount = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
+
+          const notification: PaymentNotification = {
+            id: 'PAY_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+            orderId,
+            tableId: order.tableId,
+            tableName,
+            paidByCounter: collectedBy,
+            targetCounter,
+            paymentMethod,
+            paidAmount,
+            items: itemNames,
+            status: 'pending',
+            createdAt: now,
+            acknowledgedAt: null,
+            read: false,
+
+            // Backwards compatibility fields:
+            sourceCounter: collectedBy,
+            itemNames,
+            total: paidAmount,
+            message: `Bill paid at Counter ${collectedBy} for: ${itemNames.join(', ')}`,
+          };
+
+          this.paymentNotifications.unshift(notification);
+          this.notify(`paymentNotifications:${targetCounter}`);
+        }
+      });
     }
 
     this.notify(`order:${orderId}`);
@@ -711,7 +753,7 @@ export function subscribeToOrderItems(orderId: string, callback: (items: OrderIt
 
 
 export function subscribeToPaymentNotifications(
-  targetCounter: 'B1' | 'B2',
+  targetCounter: string,
   callback: (notifications: PaymentNotification[]) => void
 ) {
   if (!isFirebaseConfigured) {
@@ -725,8 +767,11 @@ export function subscribeToPaymentNotifications(
 
   return onSnapshot(q, (snapshot) => {
     const notifications: PaymentNotification[] = [];
-    snapshot.forEach((doc) => {
-      notifications.push({ id: doc.id, ...doc.data() } as PaymentNotification);
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data() as PaymentNotification;
+      if (data.status === 'pending' || !data.read) {
+        notifications.push({ ...data, id: docSnap.id } as PaymentNotification);
+      }
     });
     notifications.sort((a, b) => b.createdAt - a.createdAt);
     callback(notifications.slice(0, 10));
@@ -994,21 +1039,25 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
   const now = Date.now();
   const itemsQuery = query(collection(db, 'orderItems'), where('orderId', '==', orderId));
   const itemSnapshot = await getDocs(itemsQuery);
-  const fastFoodItems: OrderItem[] = [];
-  const restaurantItems: OrderItem[] = [];
+  
+  const itemsByCounter: Record<string, OrderItem[]> = {};
   itemSnapshot.forEach((itemDoc) => {
     const item = { id: itemDoc.id, ...itemDoc.data() } as OrderItem;
-    if (item.kitchen === 'Fast Food') {
-      fastFoodItems.push(item);
-    } else if (item.kitchen === 'Restaurant') {
-      restaurantItems.push(item);
+    const target = KITCHEN_TO_COUNTER[item.kitchen] || 'B1';
+    if (!itemsByCounter[target]) {
+      itemsByCounter[target] = [];
     }
+    itemsByCounter[target].push(item);
   });
 
   await runTransaction(db, async (transaction) => {
     const orderDoc = await transaction.get(orderRef);
     if (!orderDoc.exists()) throw new Error('Order not found');
     const orderData = orderDoc.data() as Order;
+
+    const tableRef = doc(db, 'tables', orderData.tableId);
+    const tableDoc = await transaction.get(tableRef);
+    const tableName = tableDoc.exists() ? (tableDoc.data()?.number || orderData.tableId) : orderData.tableId;
 
     transaction.update(orderRef, {
       paymentStatus: 'Paid',
@@ -1017,7 +1066,6 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
       updatedAt: now
     });
 
-    const tableRef = doc(db, 'tables', orderData.tableId);
     transaction.update(tableRef, {
       status: 'Paid',
       lastPaymentCollectedBy: collectedBy,
@@ -1032,19 +1080,37 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
       timestamp: now
     });
 
-    if (collectedBy === 'B1' && fastFoodItems.length > 0 && restaurantItems.length > 0) {
-      const itemNames = fastFoodItems.map((item) => item.itemName);
-      const notificationRef = doc(collection(db, 'paymentNotifications'));
-      transaction.set(notificationRef, {
-        targetCounter: 'B2',
-        sourceCounter: collectedBy,
-        orderId,
-        tableId: orderData.tableId,
-        itemNames,
-        total: fastFoodItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
-        message: `Bill paid at Counter ${collectedBy} for outside food: ${itemNames.join(', ')}`,
-        createdAt: now,
-        read: false,
+    const isMixedOrder = Object.keys(itemsByCounter).length > 1;
+
+    if (isMixedOrder) {
+      Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
+        if (targetCounter !== collectedBy && list.length > 0) {
+          const itemNames = list.map((item) => item.itemName);
+          const paidAmount = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
+
+          const notificationRef = doc(collection(db, 'paymentNotifications'));
+          transaction.set(notificationRef, {
+            orderId,
+            tableId: orderData.tableId,
+            tableName,
+            paidByCounter: collectedBy,
+            targetCounter,
+            paymentMethod,
+            paidAmount,
+            items: itemNames,
+            status: 'pending',
+            createdAt: now,
+            acknowledgedAt: null,
+            read: false,
+
+            // Backwards compatibility fields:
+            sourceCounter: collectedBy,
+            itemNames,
+            total: paidAmount,
+            message: `Bill paid at Counter ${collectedBy} for: ${itemNames.join(', ')}`,
+          });
+        }
       });
     }
   });
@@ -1084,7 +1150,11 @@ export async function acknowledgePaymentNotification(notificationId: string): Pr
     return;
   }
   const ref = doc(db, 'paymentNotifications', notificationId);
-  await updateDoc(ref, { read: true });
+  await updateDoc(ref, { 
+    status: 'acknowledged',
+    acknowledgedAt: Date.now(),
+    read: true 
+  });
 }
 
 // ----------------------------------------------------
