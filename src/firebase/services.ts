@@ -1082,6 +1082,29 @@ export async function importDefaultMenu(): Promise<void> {
   await batch.commit();
 }
 
+export async function importMenuFromList(items: Omit<MenuItem, 'id'>[]): Promise<void> {
+  const mappedItems: MenuItem[] = items.map((item) => {
+    const id = `${item.category}-${item.name}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    return {
+      ...item,
+      id,
+      active: item.active ?? item.price !== null,
+      needsVerification: item.price === null,
+    };
+  });
+
+  if (!isFirebaseConfigured) {
+    mappedItems.forEach((item) => mockDb.setMenuItem(item));
+    return;
+  }
+
+  const batch = writeBatch(db);
+  mappedItems.forEach((item) => {
+    batch.set(doc(db, 'menu', item.id), item);
+  });
+  await batch.commit();
+}
+
 export async function createMenuItem(item: Omit<MenuItem, 'id'>): Promise<void> {
   if (!isFirebaseConfigured) {
     return mockDb.createMenuItem(item);

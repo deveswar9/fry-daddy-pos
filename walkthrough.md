@@ -18,6 +18,7 @@ We have successfully built and verified a production-ready, high-fidelity **Rest
 
 ### 2. Multi-Kitchen Billing & Menu Management
 - **Menu Categorization**: Organizes items into categories like **Franchise** (Burger, Sandwich, Crispy Chicken) and **Fast Food** (Noodles, Rice, Manchuria).
+- **Dynamic CSV Menu Upload**: Replaced the static menu seed import with a client-side CSV file parser. Users can download a standardized CSV template directly from the dashboard, populate it, and upload it to instantly batch-add items into the database.
 - **Single-Bill Enforcement**: Customers can order from both menus, and the app automatically appends additions into one order to prevent duplicate bills.
 - **Searchable Menu Dialog**: A sleek sliding drawer supporting instant search, inline quantity adjustments, and special preparation notes.
 - **Kitchen Label & Data Migration**: Standardized kitchen targets to `'Fast Food'` (originally `'Fast Food Kitchen'`) and `'Restaurant'` (originally `'Franchise Kitchen'`). Stale/outdated records in local storage or Firebase Firestore are automatically migrated upon snapshot subscription.
