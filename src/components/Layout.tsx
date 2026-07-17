@@ -17,9 +17,13 @@ import {
   Clock,
   ChefHat,
   Check,
-  CreditCard
+  CreditCard,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { voiceAnnouncementService, convertTableToSpeechText } from '@/services/voiceAnnouncement';
+
 
 const getPlayedIds = (): Set<string> => {
   try {
@@ -40,51 +44,6 @@ const markIdAsPlayed = (id: string) => {
   }
 };
 
-const playPOSChime = () => {
-  try {
-    const audio = new Audio('/notification.wav');
-    audio.volume = 0.5;
-    audio.play().catch((err) => {
-      console.warn('WAV playback blocked or failed, using synthesis fallback:', err);
-      // Web Audio API synthesis fallback
-      try {
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContextClass) return;
-        const ctx = new AudioContextClass();
-        const now = ctx.currentTime;
-        
-        const osc1 = ctx.createOscillator();
-        const gain1 = ctx.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(880, now); // A5
-        gain1.gain.setValueAtTime(0, now);
-        gain1.gain.linearRampToValueAtTime(0.12, now + 0.02);
-        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
-        osc1.connect(gain1);
-        gain1.connect(ctx.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.3);
-
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(1046.50, now + 0.12); // C6
-        gain2.gain.setValueAtTime(0, now + 0.12);
-        gain2.gain.linearRampToValueAtTime(0.15, now + 0.14);
-        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.start(now + 0.12);
-        osc2.stop(now + 0.6);
-      } catch (synthErr) {
-        console.warn('Web Audio synthesis failed:', synthErr);
-      }
-    });
-  } catch (err) {
-    console.warn('Audio construction failed:', err);
-  }
-};
-
 export const Layout: React.FC = () => {
   const { counter, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -94,8 +53,15 @@ export const Layout: React.FC = () => {
   const [queue, setQueue] = useState<PaymentNotification[]>([]);
   const pageLoadTime = useRef<number>(Date.now());
   const acknowledgedIds = useRef<Set<string>>(new Set());
+  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('voice_announcements_enabled') !== 'false';
+  });
 
   const activePopup = queue[0] || null;
+
+  useEffect(() => {
+    localStorage.setItem('voice_announcements_enabled', String(voiceEnabled));
+  }, [voiceEnabled]);
 
   useEffect(() => {
     if (!counter) {
@@ -108,25 +74,16 @@ export const Layout: React.FC = () => {
       const pending = notifications.filter(n => n.status === 'pending' && !acknowledgedIds.current.has(n.id));
       
       const played = getPlayedIds();
-      let playSoundCount = 0;
       
       pending.forEach((n) => {
         const isNew = n.createdAt > pageLoadTime.current;
         const hasPlayed = played.has(n.id);
         if (isNew && !hasPlayed) {
-          playSoundCount++;
           markIdAsPlayed(n.id);
+          const tableText = convertTableToSpeechText(n.tableName || n.tableId || '');
+          voiceAnnouncementService.announce(`Payment received for ${tableText}.`);
         }
       });
-      
-      if (playSoundCount > 0) {
-        // Play staggered chimes for multiple notifications
-        for (let i = 0; i < playSoundCount; i++) {
-          setTimeout(() => {
-            playPOSChime();
-          }, i * 800);
-        }
-      }
       
       setQueue((prevQueue) => {
         // Optimistically keep queue synced, ignoring any that became non-pending or locally closed
@@ -255,6 +212,21 @@ export const Layout: React.FC = () => {
                 {counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}
               </div>
             </div>
+
+            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-600 dark:text-slate-450 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-850 select-none shadow-xs">
+              <input
+                type="checkbox"
+                checked={voiceEnabled}
+                onChange={(e) => setVoiceEnabled(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
+              />
+              <span className="hidden sm:inline">Voice Announcements</span>
+              {voiceEnabled ? (
+                <Volume2 className="w-3.5 h-3.5 text-emerald-500" />
+              ) : (
+                <VolumeX className="w-3.5 h-3.5 text-slate-400" />
+              )}
+            </label>
 
             <button
               onClick={toggleTheme}
