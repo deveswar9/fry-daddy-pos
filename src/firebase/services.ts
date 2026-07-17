@@ -506,42 +506,38 @@ class MockDatabase {
       itemsByCounter[target].push(item);
     });
 
-    const isMixedOrder = Object.keys(itemsByCounter).length > 1;
+    Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
+      if (targetCounter !== collectedBy && list.length > 0) {
+        const itemNames = list.map((item) => item.itemName);
+        const paidAmount = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
 
-    if (isMixedOrder) {
-      Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
-        if (targetCounter !== collectedBy && list.length > 0) {
-          const itemNames = list.map((item) => item.itemName);
-          const paidAmount = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
-          const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
+        const notification: PaymentNotification = {
+          id: 'PAY_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+          orderId,
+          tableId: order.tableId,
+          tableName,
+          paidByCounter: collectedBy,
+          targetCounter,
+          paymentMethod,
+          paidAmount,
+          items: itemNames,
+          status: 'pending',
+          createdAt: now,
+          acknowledgedAt: null,
+          read: false,
 
-          const notification: PaymentNotification = {
-            id: 'PAY_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-            orderId,
-            tableId: order.tableId,
-            tableName,
-            paidByCounter: collectedBy,
-            targetCounter,
-            paymentMethod,
-            paidAmount,
-            items: itemNames,
-            status: 'pending',
-            createdAt: now,
-            acknowledgedAt: null,
-            read: false,
+          // Backwards compatibility fields:
+          sourceCounter: collectedBy,
+          itemNames,
+          total: paidAmount,
+          message: `Bill paid at Counter ${collectedBy} for: ${itemNames.join(', ')}`,
+        };
 
-            // Backwards compatibility fields:
-            sourceCounter: collectedBy,
-            itemNames,
-            total: paidAmount,
-            message: `Bill paid at Counter ${collectedBy} for: ${itemNames.join(', ')}`,
-          };
-
-          this.paymentNotifications.unshift(notification);
-          this.notify(`paymentNotifications:${targetCounter}`);
-        }
-      });
-    }
+        this.paymentNotifications.unshift(notification);
+        this.notify(`paymentNotifications:${targetCounter}`);
+      }
+    });
 
     this.notify(`order:${orderId}`);
     this.notify(`timeline:${orderId}`);
@@ -1102,39 +1098,35 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
       timestamp: now
     });
 
-    const isMixedOrder = Object.keys(itemsByCounter).length > 1;
+    Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
+      if (targetCounter !== collectedBy && list.length > 0) {
+        const itemNames = list.map((item) => item.itemName);
+        const paidAmount = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
 
-    if (isMixedOrder) {
-      Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
-        if (targetCounter !== collectedBy && list.length > 0) {
-          const itemNames = list.map((item) => item.itemName);
-          const paidAmount = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
-          const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
+        const notificationRef = doc(collection(db, 'paymentNotifications'));
+        transaction.set(notificationRef, {
+          orderId,
+          tableId: orderData.tableId,
+          tableName,
+          paidByCounter: collectedBy,
+          targetCounter,
+          paymentMethod,
+          paidAmount,
+          items: itemNames,
+          status: 'pending',
+          createdAt: now,
+          acknowledgedAt: null,
+          read: false,
 
-          const notificationRef = doc(collection(db, 'paymentNotifications'));
-          transaction.set(notificationRef, {
-            orderId,
-            tableId: orderData.tableId,
-            tableName,
-            paidByCounter: collectedBy,
-            targetCounter,
-            paymentMethod,
-            paidAmount,
-            items: itemNames,
-            status: 'pending',
-            createdAt: now,
-            acknowledgedAt: null,
-            read: false,
-
-            // Backwards compatibility fields:
-            sourceCounter: collectedBy,
-            itemNames,
-            total: paidAmount,
-            message: `Bill paid at Counter ${collectedBy} for: ${itemNames.join(', ')}`,
-          });
-        }
-      });
-    }
+          // Backwards compatibility fields:
+          sourceCounter: collectedBy,
+          itemNames,
+          total: paidAmount,
+          message: `Bill paid at Counter ${collectedBy} for: ${itemNames.join(', ')}`,
+        });
+      }
+    });
   });
 }
 

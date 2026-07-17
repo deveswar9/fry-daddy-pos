@@ -339,7 +339,7 @@ export const Layout: React.FC = () => {
               <div className="space-y-4 text-sm leading-relaxed mb-6 font-sans">
                 <div className="grid grid-cols-2 gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-3">
                   <div>
-                    <span className="text-slate-400 font-light block text-xs">Table Number :</span>
+                    <span className="text-slate-400 font-light block text-xs">Table:</span>
                     <span className="font-extrabold text-base">
                       {(() => {
                         const raw = activePopup.tableName || activePopup.tableId || '';
@@ -350,17 +350,17 @@ export const Layout: React.FC = () => {
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 font-light block text-xs">Paid At :</span>
+                    <span className="text-slate-400 font-light block text-xs">Paid At:</span>
                     <span className="font-extrabold text-sm text-slate-850 dark:text-slate-100">
                       {activePopup.paidByCounter === 'B1' 
-                        ? 'Restaurant B1' 
-                        : (activePopup.paidByCounter === 'B2' ? 'Fast Food B2' : `Counter ${activePopup.paidByCounter}`)}
+                        ? 'Restaurant Billing (B1)' 
+                        : (activePopup.paidByCounter === 'B2' ? 'Fast Food Billing (B2)' : `Counter ${activePopup.paidByCounter}`)}
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-slate-400 font-light block text-xs mb-1.5">Items :</span>
+                  <span className="text-slate-400 font-light block text-xs mb-1.5">Items Paid:</span>
                   <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 max-h-[160px] overflow-y-auto">
                     {(activePopup.items || activePopup.itemNames || []).map((name, i) => (
                       <div key={i} className="flex items-center gap-1.5">
@@ -373,18 +373,22 @@ export const Layout: React.FC = () => {
 
                 <div className="space-y-1 font-mono text-xs text-slate-650 dark:text-slate-350">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Amount :</span>
+                    <span className="text-slate-400">Subtotal:</span>
                     <span className="font-bold text-slate-900 dark:text-white">₹{activePopup.paidAmount ?? activePopup.total ?? 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Payment Method :</span>
+                    <span className="text-slate-400">Payment Method:</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">{activePopup.paymentMethod || 'UPI'}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Time :</span>
+                    <span className="text-slate-400">Payment Time:</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">
                       {new Date(activePopup.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Order Number:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{activePopup.orderId}</span>
                   </div>
                 </div>
               </div>
