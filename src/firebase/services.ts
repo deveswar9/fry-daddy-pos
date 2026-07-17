@@ -98,6 +98,20 @@ export interface PaymentNotification {
   message?: string;
 }
 
+export interface OrderNotification {
+  id: string;
+  orderId: string;
+  tableId: string;
+  tableName: string;
+  sourceCounter: string;
+  targetCounter: string;
+  items: Array<{ itemName: string; quantity: number }>;
+  status: 'Pending' | 'Accepted';
+  createdAt: number;
+  acceptedAt: number | null;
+  acceptedBy: string | null;
+}
+
 export const KITCHEN_TO_COUNTER: Record<string, string> = {
   'Restaurant': 'B1',
   'Fast Food': 'B2'
@@ -156,6 +170,7 @@ class MockDatabase {
   private orderItems: Map<string, OrderItem[]> = new Map(); // orderId -> items
   private timelines: Map<string, TimelineEntry[]> = new Map(); // orderId -> entries
   private paymentNotifications: PaymentNotification[] = [];
+  private orderNotifications: OrderNotification[] = [];
 
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
 
@@ -171,6 +186,7 @@ class MockDatabase {
       const storedItems = localStorage.getItem('r_items');
       const storedTimelines = localStorage.getItem('r_timelines');
       const storedPaymentNotifications = localStorage.getItem('r_payment_notifications');
+      const storedOrderNotifications = localStorage.getItem('r_order_notifications');
 
       const tablesData = storedTables ? JSON.parse(storedTables) : [];
       const hasOldIds = tablesData.some((t: any) => t.id.startsWith('I') || t.id.startsWith('O'));
@@ -221,6 +237,11 @@ class MockDatabase {
       } else {
         this.paymentNotifications = [];
       }
+      if (storedOrderNotifications) {
+        this.orderNotifications = JSON.parse(storedOrderNotifications);
+      } else {
+        this.orderNotifications = [];
+      }
 
       this.saveToStorage();
     } catch (e) {
@@ -236,6 +257,7 @@ class MockDatabase {
     localStorage.setItem('r_items', JSON.stringify(Object.fromEntries(this.orderItems)));
     localStorage.setItem('r_timelines', JSON.stringify(Object.fromEntries(this.timelines)));
     localStorage.setItem('r_payment_notifications', JSON.stringify(this.paymentNotifications));
+    localStorage.setItem('r_order_notifications', JSON.stringify(this.orderNotifications));
   }
 
   public subscribe(key: string, callback: (data: any) => void) {
@@ -266,6 +288,12 @@ class MockDatabase {
         .filter((entry) => entry.targetCounter === targetCounter)
         .sort((a, b) => b.createdAt - a.createdAt)
         .slice(0, 10);
+    }
+    if (key.startsWith('orderNotifications:')) {
+      const targetCounter = key.split(':')[1];
+      return this.orderNotifications
+        .filter((entry) => entry.targetCounter === targetCounter && entry.status === 'Pending')
+        .sort((a, b) => b.createdAt - a.createdAt);
     }
     if (key.startsWith('orderItems:')) {
       const orderId = key.split(':')[1];
@@ -605,6 +633,26 @@ class MockDatabase {
     this.notify('paymentNotifications:B1');
   }
 
+  public createOrderNotification(notification: Omit<OrderNotification, 'id'>): string {
+    const id = 'ON-' + Math.floor(Math.random() * 1000000);
+    const newNotif = { ...notification, id };
+    this.orderNotifications.push(newNotif);
+    this.notify(`orderNotifications:${notification.targetCounter}`);
+    return id;
+  }
+
+  public acceptOrderNotification(notificationId: string, acceptedBy: string): void {
+    this.orderNotifications = this.orderNotifications.map(n => 
+      n.id === notificationId 
+        ? { ...n, status: 'Accepted' as const, acceptedAt: Date.now(), acceptedBy } 
+        : n
+    );
+    const notif = this.orderNotifications.find(n => n.id === notificationId);
+    if (notif) {
+      this.notify(`orderNotifications:${notif.targetCounter}`);
+    }
+  }
+
   public getAllOrders(): Order[] {
     return Array.from(this.orders.values());
   }
@@ -795,6 +843,62 @@ export function subscribeToPaymentNotifications(
     callback(notifications.slice(0, 10));
   });
 }
+
+export function getCounterForKitchen(kitchen: string): string {
+  return KITCHEN_TO_COUNTER[kitchen] || kitchen;
+}
+
+export async function createOrderNotification(
+  notification: Omit<OrderNotification, 'id'>
+): Promise<string> {
+  if (!isFirebaseConfigured) {
+    return mockDb.createOrderNotification(notification);
+  }
+
+  const docRef = await addDoc(collection(db, 'orderNotifications'), notification);
+  return docRef.id;
+}
+
+export async function acceptOrderNotification(
+  notificationId: string,
+  acceptedBy: string
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return mockDb.acceptOrderNotification(notificationId, acceptedBy);
+  }
+
+  const docRef = doc(db, 'orderNotifications', notificationId);
+  await updateDoc(docRef, {
+    status: 'Accepted',
+    acceptedAt: Date.now(),
+    acceptedBy: acceptedBy
+  });
+}
+
+export function subscribeToOrderNotifications(
+  targetCounter: string,
+  callback: (notifications: OrderNotification[]) => void
+) {
+  if (!isFirebaseConfigured) {
+    return mockDb.subscribe(`orderNotifications:${targetCounter}`, callback);
+  }
+
+  const q = query(
+    collection(db, 'orderNotifications'),
+    where('targetCounter', '==', targetCounter),
+    where('status', '==', 'Pending')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const notifications: OrderNotification[] = [];
+    snapshot.forEach((docSnap) => {
+      notifications.push({ ...docSnap.data(), id: docSnap.id } as OrderNotification);
+    });
+    notifications.sort((a, b) => b.createdAt - a.createdAt);
+    callback(notifications);
+  });
+}
+
 export function subscribeToTimeline(orderId: string, callback: (entries: TimelineEntry[]) => void) {
   if (!isFirebaseConfigured) {
     return mockDb.subscribe(`timeline:${orderId}`, callback);

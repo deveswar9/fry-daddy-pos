@@ -19,6 +19,7 @@ import {
 } from '@/firebase/services';
 import { useAuth } from '@/context/AuthContext';
 import { AddItemsDialog, getCategoryBadgeStyles } from '@/features/menu/AddItemsDialog';
+import { OrderNotificationService } from '@/services/OrderNotificationService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -93,6 +94,21 @@ export const TableDetailsPage: React.FC = () => {
       for (const entry of itemsToAdd) {
         await addOrderItem(orderId, entry.menuItem, entry.quantity, entry.notes, counter);
       }
+
+      // Notify other billing counters of items added belonging to them
+      const itemsForNotif = itemsToAdd.map(e => ({
+        name: e.menuItem.name,
+        quantity: e.quantity,
+        kitchen: e.menuItem.kitchen
+      }));
+
+      await OrderNotificationService.notifyOtherCounters({
+        orderId,
+        tableId: id,
+        tableName: table?.number || id,
+        sourceCounter: counter,
+        items: itemsForNotif
+      });
     } catch (e) {
       console.error(e);
     } finally {
