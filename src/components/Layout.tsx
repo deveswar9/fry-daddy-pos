@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -21,36 +21,145 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const getPlayedIds = (): Set<string> => {
+  try {
+    const stored = localStorage.getItem('played_payment_notifications');
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch (e) {
+    return new Set();
+  }
+};
+
+const markIdAsPlayed = (id: string) => {
+  try {
+    const played = getPlayedIds();
+    played.add(id);
+    localStorage.setItem('played_payment_notifications', JSON.stringify(Array.from(played)));
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const playPOSChime = () => {
+  try {
+    const audio = new Audio('/notification.wav');
+    audio.volume = 0.5;
+    audio.play().catch((err) => {
+      console.warn('WAV playback blocked or failed, using synthesis fallback:', err);
+      // Web Audio API synthesis fallback
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) return;
+        const ctx = new AudioContextClass();
+        const now = ctx.currentTime;
+        
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(880, now); // A5
+        gain1.gain.setValueAtTime(0, now);
+        gain1.gain.linearRampToValueAtTime(0.12, now + 0.02);
+        gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.3);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1046.50, now + 0.12); // C6
+        gain2.gain.setValueAtTime(0, now + 0.12);
+        gain2.gain.linearRampToValueAtTime(0.15, now + 0.14);
+        gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.12);
+        osc2.stop(now + 0.6);
+      } catch (synthErr) {
+        console.warn('Web Audio synthesis failed:', synthErr);
+      }
+    });
+  } catch (err) {
+    console.warn('Audio construction failed:', err);
+  }
+};
+
 export const Layout: React.FC = () => {
   const { counter, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [activePopup, setActivePopup] = useState<PaymentNotification | null>(null);
+  const [queue, setQueue] = useState<PaymentNotification[]>([]);
+  const pageLoadTime = useRef<number>(Date.now());
+  const acknowledgedIds = useRef<Set<string>>(new Set());
+
+  const activePopup = queue[0] || null;
 
   useEffect(() => {
     if (!counter) {
-      setActivePopup(null);
+      setQueue([]);
       return;
     }
 
     const unsubscribe = subscribeToPaymentNotifications(counter, (notifications) => {
-      const pending = notifications.find(n => n.status === 'pending');
-      if (pending) {
-        setActivePopup(pending);
-      } else {
-        setActivePopup(null);
+      // Filter out notifications acknowledged locally during this session
+      const pending = notifications.filter(n => n.status === 'pending' && !acknowledgedIds.current.has(n.id));
+      
+      const played = getPlayedIds();
+      let playSoundCount = 0;
+      
+      pending.forEach((n) => {
+        const isNew = n.createdAt > pageLoadTime.current;
+        const hasPlayed = played.has(n.id);
+        if (isNew && !hasPlayed) {
+          playSoundCount++;
+          markIdAsPlayed(n.id);
+        }
+      });
+      
+      if (playSoundCount > 0) {
+        // Play staggered chimes for multiple notifications
+        for (let i = 0; i < playSoundCount; i++) {
+          setTimeout(() => {
+            playPOSChime();
+          }, i * 800);
+        }
       }
+      
+      setQueue((prevQueue) => {
+        // Optimistically keep queue synced, ignoring any that became non-pending or locally closed
+        const filteredPrev = prevQueue.filter(q => pending.some(p => p.id === q.id) && !acknowledgedIds.current.has(q.id));
+        const merged = [...filteredPrev];
+        
+        // Add new pending items (sorted oldest first/chronologically for cashier flow)
+        const sortedPending = [...pending].sort((a, b) => a.createdAt - b.createdAt);
+        sortedPending.forEach((incoming) => {
+          if (!merged.some(q => q.id === incoming.id)) {
+            merged.push(incoming);
+          }
+        });
+        
+        return merged;
+      });
     });
 
     return unsubscribe;
   }, [counter]);
 
   const handleAcknowledge = async () => {
-    if (!activePopup) return;
+    if (queue.length === 0) return;
+    const current = queue[0];
+    
+    // Add to local ref of acknowledged IDs
+    acknowledgedIds.current.add(current.id);
+    
+    // Optimistically update local queue
+    setQueue(prev => prev.filter(n => n.id !== current.id));
+    
     try {
-      await acknowledgePaymentNotification(activePopup.id);
+      await acknowledgePaymentNotification(current.id);
     } catch (e) {
       console.error('Failed to acknowledge notification:', e);
     }
@@ -230,7 +339,7 @@ export const Layout: React.FC = () => {
               <div className="space-y-4 text-sm leading-relaxed mb-6 font-sans">
                 <div className="grid grid-cols-2 gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-3">
                   <div>
-                    <span className="text-slate-400 font-light block text-xs">Table :</span>
+                    <span className="text-slate-400 font-light block text-xs">Table Number :</span>
                     <span className="font-extrabold text-base">
                       {(() => {
                         const raw = activePopup.tableName || activePopup.tableId || '';
@@ -242,36 +351,29 @@ export const Layout: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-slate-400 font-light block text-xs">Paid At :</span>
-                    <span className="font-extrabold text-sm text-slate-800 dark:text-slate-200">
+                    <span className="font-extrabold text-sm text-slate-850 dark:text-slate-100">
                       {activePopup.paidByCounter === 'B1' 
-                        ? 'Restaurant Counter' 
-                        : (activePopup.paidByCounter === 'B2' ? 'Fast Food Counter' : `Counter ${activePopup.paidByCounter}`)}
+                        ? 'Restaurant B1' 
+                        : (activePopup.paidByCounter === 'B2' ? 'Fast Food B2' : `Counter ${activePopup.paidByCounter}`)}
                     </span>
                   </div>
                 </div>
 
-                <p className="text-slate-500 dark:text-slate-400 text-xs font-light">
-                  The following {activePopup.targetCounter === 'B1' 
-                    ? 'Restaurant' 
-                    : (activePopup.targetCounter === 'B2' ? 'Fast Food' : 'Target Counter')} items have been paid.
-                </p>
-
-                <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 max-h-[160px] overflow-y-auto">
-                  {(activePopup.items || activePopup.itemNames || []).map((name, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <span className="text-emerald-500">✓</span>
-                      <span>{name}</span>
-                    </div>
-                  ))}
+                <div>
+                  <span className="text-slate-400 font-light block text-xs mb-1.5">Items :</span>
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 max-h-[160px] overflow-y-auto">
+                    {(activePopup.items || activePopup.itemNames || []).map((name, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <span className="text-emerald-500 font-semibold">✓</span>
+                        <span>{name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-1 font-mono text-xs text-slate-650 dark:text-slate-350">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">
-                      {activePopup.targetCounter === 'B1' 
-                        ? 'Restaurant' 
-                        : (activePopup.targetCounter === 'B2' ? 'Fast Food' : 'Target')} Total :
-                    </span>
+                    <span className="text-slate-400">Amount :</span>
                     <span className="font-bold text-slate-900 dark:text-white">₹{activePopup.paidAmount ?? activePopup.total ?? 0}</span>
                   </div>
                   <div className="flex justify-between">
@@ -281,7 +383,7 @@ export const Layout: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-slate-400">Time :</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">
-                      {new Date(activePopup.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(activePopup.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                     </span>
                   </div>
                 </div>

@@ -216,6 +216,11 @@ class MockDatabase {
         const parsedTimelines = JSON.parse(storedTimelines);
         this.timelines = new Map(Object.entries(parsedTimelines));
       }
+      if (storedPaymentNotifications) {
+        this.paymentNotifications = JSON.parse(storedPaymentNotifications);
+      } else {
+        this.paymentNotifications = [];
+      }
 
       this.saveToStorage();
     } catch (e) {
@@ -598,7 +603,7 @@ class MockDatabase {
 
   public acknowledgeNotification(notificationId: string) {
     this.paymentNotifications = this.paymentNotifications.map(n => 
-      n.id === notificationId ? { ...n, read: true } : n
+      n.id === notificationId ? { ...n, status: 'acknowledged', acknowledgedAt: Date.now(), read: true } : n
     );
     this.notify('paymentNotifications:B2');
     this.notify('paymentNotifications:B1');
