@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { voiceAnnouncementService, convertTableToSpeechText } from '@/services/voiceAnnouncement';
-import { OrderNotificationPopup } from './OrderNotificationPopup';
+import { KitchenNotificationPopup } from './KitchenNotificationPopup';
 
 
 const getPlayedIds = (): Set<string> => {
@@ -442,7 +442,7 @@ export const Layout: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <OrderNotificationPopup />
+      <KitchenNotificationPopup />
     </div>
   );
 };

@@ -9,11 +9,13 @@ import {
   addOrderItem,
   updateOrderItemQuantity,
   updateOrderItemServedStatus,
-  markOrderItemKitchenNotified,
   getCounterForKitchen,
   markOrderPaymentPending,
   collectPayment,
   closeTable,
+  createKitchenNotification,
+  resetOrderItemKitchenStatus,
+  markOrderItemKitchenAcceptedImmediately,
   Table,
   Order,
   OrderItem,
@@ -22,7 +24,6 @@ import {
 } from '@/firebase/services';
 import { useAuth } from '@/context/AuthContext';
 import { AddItemsDialog } from '@/features/menu/AddItemsDialog';
-import { OrderNotificationService } from '@/services/OrderNotificationService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -47,6 +48,7 @@ export const TableDetailsPage: React.FC = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sendingItemIds, setSendingItemIds] = useState<Set<string>>(() => new Set());
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(() => new Set());
 
   // Modal / Confirm state
   const [confirmPaymentOpen, setConfirmPaymentOpen] = useState(false);
@@ -124,36 +126,80 @@ export const TableDetailsPage: React.FC = () => {
     }
   };
 
-  const handleSendToKitchen = async (item: OrderItem) => {
-    if (!order || !table || !counter || getCounterForKitchen(item.kitchen) === counter || item.kitchenNotified) return;
+  const handleSendSelectedToKitchen = async (itemsToSend: OrderItem[]) => {
+    if (!order || !table || !counter || itemsToSend.length === 0) return;
 
-    setSendingItemIds((prev) => new Set(prev).add(item.id));
+    const itemIds = itemsToSend.map(i => i.id);
+    setSendingItemIds((prev) => {
+      const next = new Set(prev);
+      itemIds.forEach(id => next.add(id));
+      return next;
+    });
+
     try {
-      await OrderNotificationService.notifyOtherCounters({
-        orderId: order.id,
-        tableId: table.id,
-        tableName: table.number,
-        sourceCounter: counter,
-        items: [{
-          itemId: item.id,
-          name: item.itemName,
-          quantity: item.quantity,
-          kitchen: item.kitchen
-        }]
+      // Group items by their target kitchen counter resolved dynamically
+      const groups: Record<string, OrderItem[]> = {};
+      itemsToSend.forEach((item) => {
+        const target = getCounterForKitchen(item.kitchen);
+        if (!groups[target]) {
+          groups[target] = [];
+        }
+        groups[target].push(item);
       });
-      await markOrderItemKitchenNotified(order.id, item.id, counter);
-      setSendingItemIds((prev) => {
+
+      for (const [targetCounter, groupItems] of Object.entries(groups)) {
+        if (targetCounter === counter) {
+          // Local counter items accepted immediately
+          for (const item of groupItems) {
+            await markOrderItemKitchenAcceptedImmediately(order.id, item.id, counter);
+          }
+        } else {
+          // Cross-counter items, generate a new kitchen request notification document
+          await createKitchenNotification({
+            orderId: order.id,
+            tableId: table.id,
+            tableNumber: table.number,
+            sourceCounter: counter,
+            targetCounter: targetCounter,
+            status: 'Pending',
+            createdAt: Date.now(),
+            acceptedAt: null,
+            acceptedBy: null,
+            createdBy: counter,
+            items: groupItems.map(i => ({
+              itemId: i.id,
+              itemName: i.itemName,
+              quantity: i.quantity,
+              category: i.category,
+              availableAt: targetCounter
+            }))
+          });
+        }
+      }
+
+      // Remove from selected list
+      setSelectedItemIds((prev) => {
         const next = new Set(prev);
-        next.delete(item.id);
+        itemIds.forEach(id => next.delete(id));
         return next;
       });
     } catch (e) {
-      console.error(e);
+      console.error('Failed to send items to kitchen:', e);
+    } finally {
       setSendingItemIds((prev) => {
         const next = new Set(prev);
-        next.delete(item.id);
+        itemIds.forEach(id => next.delete(id));
         return next;
       });
+    }
+  };
+
+  const handleResetKitchenStatus = async (itemId: string) => {
+    if (!order) return;
+    try {
+      await resetOrderItemKitchenStatus(order.id, itemId);
+    } catch (e) {
+      console.error('Failed to reset kitchen status:', e);
     }
   };
   const handleRequestBill = async () => {
@@ -229,7 +275,7 @@ export const TableDetailsPage: React.FC = () => {
     const belongsToCurrentCounter = getCounterForKitchen(item.kitchen) === counter;
     const isPending = item.status === 'Pending';
     const isSending = sendingItemIds.has(item.id);
-    const isSentToKitchen = !!item.kitchenNotified || isSending;
+    const canSelectForKitchen = !belongsToCurrentCounter && (!item.kitchenStatus || item.kitchenStatus === 'Not Sent');
 
     return (
     <motion.div
@@ -241,6 +287,25 @@ export const TableDetailsPage: React.FC = () => {
       className="py-4 flex items-center justify-between gap-4"
     >
       <div className="flex items-center gap-3">
+        {canSelectForKitchen && (
+          <input
+            type="checkbox"
+            checked={selectedItemIds.has(item.id)}
+            onChange={(e) => {
+              setSelectedItemIds((prev) => {
+                const next = new Set(prev);
+                if (e.target.checked) {
+                  next.add(item.id);
+                } else {
+                  next.delete(item.id);
+                }
+                return next;
+              });
+            }}
+            className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-indigo-500 focus:ring-indigo-400 cursor-pointer accent-indigo-500 mr-1"
+            title="Select to send to kitchen"
+          />
+        )}
         <input
           type="checkbox"
           checked={!!item.served}
@@ -298,15 +363,11 @@ export const TableDetailsPage: React.FC = () => {
         ₹{item.price * item.quantity}
       </div>
 
-      {!belongsToCurrentCounter && isPending && (
-        item.kitchenNotified ? (
-          <span className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 shadow-xs whitespace-nowrap">
-            Sent to Kitchen
-          </span>
-        ) : (
+      {!belongsToCurrentCounter && (
+        !item.kitchenStatus || item.kitchenStatus === 'Not Sent' ? (
           <button
             type="button"
-            onClick={() => handleSendToKitchen(item)}
+            onClick={() => handleSendSelectedToKitchen([item])}
             disabled={isSending}
             className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-xs whitespace-nowrap ${
               isSending
@@ -316,6 +377,34 @@ export const TableDetailsPage: React.FC = () => {
           >
             {isSending ? 'Sending...' : 'Send to Kitchen'}
           </button>
+        ) : item.kitchenStatus === 'Pending' ? (
+          <div className="flex items-center gap-1.5">
+            <span className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 shadow-xs whitespace-nowrap">
+              Pending Acceptance
+            </span>
+            <button
+              type="button"
+              onClick={() => handleResetKitchenStatus(item.id)}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+              title="Resend / Reset Status"
+            >
+              Reset
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <span className="px-3 py-1.5 text-xs font-bold rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-xs whitespace-nowrap">
+              Accepted
+            </span>
+            <button
+              type="button"
+              onClick={() => handleResetKitchenStatus(item.id)}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+              title="Resend / Reset Status"
+            >
+              Reset
+            </button>
+          </div>
         )
       )}
     </motion.div>
@@ -331,11 +420,28 @@ export const TableDetailsPage: React.FC = () => {
   ) => {
     if (sectionItems.length === 0) return null;
 
+    const eligibleItems = sectionItems.filter(
+      item => getCounterForKitchen(item.kitchen) !== counter && (!item.kitchenStatus || item.kitchenStatus === 'Not Sent')
+    );
+
+    const selectedInSection = sectionItems.filter(item => selectedItemIds.has(item.id));
+
     return (
       <section key={title} className="rounded-2xl border border-slate-150 dark:border-slate-850 overflow-hidden">
         <div className={`px-4 py-3 flex items-center justify-between gap-3 ${accentClasses}`}>
           <div>
-            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{title}</h3>
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+              {title}
+              {eligibleItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleSendSelectedToKitchen(eligibleItems)}
+                  className="px-2 py-0.5 text-[10px] font-bold rounded bg-indigo-500 hover:bg-indigo-650 text-white cursor-pointer transition-all shadow-xs"
+                >
+                  Send All to Kitchen
+                </button>
+              )}
+            </h3>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{counterLabel}</p>
           </div>
           <div className="text-right">
@@ -346,6 +452,18 @@ export const TableDetailsPage: React.FC = () => {
         <div className="divide-y divide-slate-100 dark:divide-slate-800 px-4">
           {sectionItems.map(renderOrderItem)}
         </div>
+        {selectedInSection.length > 0 && (
+          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-150 dark:border-slate-800 flex justify-between items-center text-xs font-bold">
+            <span className="text-slate-500 font-medium">{selectedInSection.length} item(s) selected</span>
+            <button
+              type="button"
+              onClick={() => handleSendSelectedToKitchen(selectedInSection)}
+              className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-md transition-all flex items-center gap-1"
+            >
+              Send Selected to Kitchen
+            </button>
+          </div>
+        )}
       </section>
     );
   };

@@ -14,7 +14,8 @@ import {
   writeBatch,
   Timestamp,
   getDoc,
-  getDocs
+  getDocs,
+  deleteField
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config';
 import { menuSeed, type MenuKitchen, type MenuSeedItem } from '@/data/menuSeed';
@@ -70,6 +71,34 @@ export interface OrderItem {
   served?: boolean;
   status?: 'Pending' | 'Accepted';
   kitchenNotified?: boolean;
+
+  // Realtime Kitchen Send fields:
+  availableAt?: string;
+  kitchenStatus?: 'Not Sent' | 'Pending' | 'Accepted';
+  sentAt?: number;
+  acceptedAt?: number;
+  acceptedBy?: string;
+}
+
+export interface KitchenNotification {
+  id: string; // notificationId
+  orderId: string;
+  tableId: string;
+  tableNumber: string;
+  sourceCounter: string;
+  targetCounter: string;
+  items: Array<{
+    itemId: string;
+    itemName: string;
+    quantity: number;
+    category: string;
+    availableAt: string;
+  }>;
+  status: 'Pending' | 'Accepted';
+  createdAt: number;
+  acceptedAt: number | null;
+  acceptedBy: string | null;
+  createdBy: string;
 }
 
 export interface TimelineEntry {
@@ -175,6 +204,7 @@ class MockDatabase {
   private timelines: Map<string, TimelineEntry[]> = new Map(); // orderId -> entries
   private paymentNotifications: PaymentNotification[] = [];
   private orderNotifications: OrderNotification[] = [];
+  private kitchenNotifications: KitchenNotification[] = [];
 
   private listeners: Map<string, Set<(data: any) => void>> = new Map();
 
@@ -196,6 +226,7 @@ class MockDatabase {
       const storedTimelines = localStorage.getItem('r_timelines');
       const storedPaymentNotifications = localStorage.getItem('r_payment_notifications');
       const storedOrderNotifications = localStorage.getItem('r_order_notifications');
+      const storedKitchenNotifications = localStorage.getItem('r_kitchen_notifications');
 
       const tablesData = storedTables ? JSON.parse(storedTables) : [];
       const hasOldIds = tablesData.some((t: any) => t.id.startsWith('I') || t.id.startsWith('O'));
@@ -251,6 +282,11 @@ class MockDatabase {
       } else {
         this.orderNotifications = [];
       }
+      if (storedKitchenNotifications) {
+        this.kitchenNotifications = JSON.parse(storedKitchenNotifications);
+      } else {
+        this.kitchenNotifications = [];
+      }
 
       if (persist) {
         this.saveToStorage();
@@ -269,6 +305,7 @@ class MockDatabase {
     localStorage.setItem('r_timelines', JSON.stringify(Object.fromEntries(this.timelines)));
     localStorage.setItem('r_payment_notifications', JSON.stringify(this.paymentNotifications));
     localStorage.setItem('r_order_notifications', JSON.stringify(this.orderNotifications));
+    localStorage.setItem('r_kitchen_notifications', JSON.stringify(this.kitchenNotifications));
   }
 
   public subscribe(key: string, callback: (data: any) => void) {
@@ -310,6 +347,12 @@ class MockDatabase {
     if (key.startsWith('orderNotifications:')) {
       const targetCounter = key.split(':')[1];
       return this.orderNotifications
+        .filter((entry) => entry.targetCounter === targetCounter && entry.status === 'Pending')
+        .sort((a, b) => b.createdAt - a.createdAt);
+    }
+    if (key.startsWith('kitchenNotifications:')) {
+      const targetCounter = key.split(':')[1];
+      return this.kitchenNotifications
         .filter((entry) => entry.targetCounter === targetCounter && entry.status === 'Pending')
         .sort((a, b) => b.createdAt - a.createdAt);
     }
@@ -410,7 +453,9 @@ class MockDatabase {
         kitchen: menuItem.kitchen,
         notes,
         createdAt: now,
-        status: getCounterForKitchen(menuItem.kitchen) === actor ? 'Accepted' : 'Pending'
+        status: getCounterForKitchen(menuItem.kitchen) === actor ? 'Accepted' : 'Pending',
+        availableAt: getCounterForKitchen(menuItem.kitchen),
+        kitchenStatus: getCounterForKitchen(menuItem.kitchen) === actor ? 'Accepted' : 'Not Sent'
       };
       currentItems.push(newItem);
     }
@@ -723,6 +768,132 @@ class MockDatabase {
       this.notify(`timeline:${notif.orderId}`);
       this.notify(`orderNotifications:${notif.targetCounter}`);
     }
+  }
+
+  public createKitchenNotification(notification: Omit<KitchenNotification, 'id'>): string {
+    const id = 'KN-' + Math.floor(Math.random() * 1000000);
+    const newNotif = { ...notification, id };
+    this.kitchenNotifications.push(newNotif as any);
+
+    // Update order items
+    const orderId = notification.orderId;
+    const items = this.orderItems.get(orderId) || [];
+    const itemIds = new Set(notification.items.map(i => i.itemId));
+    const updated = items.map(item => {
+      if (itemIds.has(item.id)) {
+        return {
+          ...item,
+          kitchenStatus: 'Pending' as const,
+          sentAt: Date.now()
+        };
+      }
+      return item;
+    });
+    this.orderItems.set(orderId, updated);
+
+    this.saveToStorage();
+    this.notify(`orderItems:${orderId}`);
+    this.notify(`kitchenNotifications:${notification.targetCounter}`);
+    return id;
+  }
+
+  public acceptKitchenNotification(notificationId: string, acceptedBy: string): void {
+    this.kitchenNotifications = this.kitchenNotifications.map(n =>
+      n.id === notificationId
+        ? { ...n, status: 'Accepted' as const, acceptedAt: Date.now(), acceptedBy } as any
+        : n
+    );
+    const notif = this.kitchenNotifications.find(n => n.id === notificationId);
+    if (notif) {
+      const items = this.orderItems.get(notif.orderId) || [];
+      const itemIds = new Set(notif.items.map(i => i.itemId));
+      const updated = items.map(item => {
+        if (itemIds.has(item.id)) {
+          return {
+            ...item,
+            status: 'Accepted' as const,
+            kitchenStatus: 'Accepted' as const,
+            acceptedAt: Date.now(),
+            acceptedBy
+          };
+        }
+        return item;
+      });
+      this.orderItems.set(notif.orderId, updated);
+
+      const now = Date.now();
+      const tlEntry: TimelineEntry = {
+        id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+        type: 'item_added',
+        message: `Accepted kitchen order: ${notif.items.map(i => i.itemName).join(', ')}`,
+        actor: acceptedBy as any,
+        timestamp: now
+      };
+      const timeline = this.timelines.get(notif.orderId) || [];
+      timeline.push(tlEntry);
+      this.timelines.set(notif.orderId, timeline);
+
+      this.saveToStorage();
+      this.notify(`orderItems:${notif.orderId}`);
+      this.notify(`timeline:${notif.orderId}`);
+      this.notify(`kitchenNotifications:${notif.targetCounter}`);
+    }
+  }
+
+  public resetOrderItemKitchenStatus(orderId: string, itemId: string): void {
+    const items = this.orderItems.get(orderId) || [];
+    const updated = items.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          kitchenStatus: 'Not Sent' as const,
+          status: 'Pending' as const,
+          sentAt: undefined,
+          acceptedAt: undefined,
+          acceptedBy: undefined
+        };
+      }
+      return item;
+    });
+    this.orderItems.set(orderId, updated);
+    this.saveToStorage();
+    this.notify(`orderItems:${orderId}`);
+  }
+
+  public markOrderItemKitchenAcceptedImmediately(orderId: string, itemId: string, actor: string): void {
+    const items = this.orderItems.get(orderId) || [];
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const updated = items.map(i => {
+      if (i.id === itemId) {
+        return {
+          ...i,
+          status: 'Accepted' as const,
+          kitchenStatus: 'Accepted' as const,
+          acceptedAt: Date.now(),
+          acceptedBy: actor
+        };
+      }
+      return i;
+    });
+    this.orderItems.set(orderId, updated);
+
+    const now = Date.now();
+    const tlEntry: TimelineEntry = {
+      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      type: 'item_added',
+      message: `Accepted local kitchen order: ${item.itemName}`,
+      actor: actor as any,
+      timestamp: now
+    };
+    const timeline = this.timelines.get(orderId) || [];
+    timeline.push(tlEntry);
+    this.timelines.set(orderId, timeline);
+
+    this.saveToStorage();
+    this.notify(`orderItems:${orderId}`);
+    this.notify(`timeline:${orderId}`);
   }
 
   public markOrderItemKitchenNotified(orderId: string, itemId: string, actor: 'B1' | 'B2') {
@@ -1114,6 +1285,144 @@ export function subscribeToOrderNotifications(
   });
 }
 
+export async function createKitchenNotification(
+  notification: Omit<KitchenNotification, 'id'>
+): Promise<string> {
+  if (!isFirebaseConfigured) {
+    return mockDb.createKitchenNotification(notification);
+  }
+
+  const batch = writeBatch(db);
+  const docRef = doc(collection(db, 'kitchenNotifications'));
+  batch.set(docRef, { ...notification, status: 'Pending', createdAt: Date.now() });
+
+  notification.items.forEach((item) => {
+    const itemRef = doc(db, 'orderItems', item.itemId);
+    batch.update(itemRef, {
+      kitchenStatus: 'Pending',
+      sentAt: Date.now()
+    });
+  });
+
+  await batch.commit();
+  return docRef.id;
+}
+
+export async function acceptKitchenNotification(
+  notificationId: string,
+  acceptedBy: string
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return mockDb.acceptKitchenNotification(notificationId, acceptedBy);
+  }
+
+  const notifRef = doc(db, 'kitchenNotifications', notificationId);
+  const notifSnap = await getDoc(notifRef);
+  if (!notifSnap.exists()) return;
+  const notifData = notifSnap.data() as KitchenNotification;
+
+  const batch = writeBatch(db);
+  batch.update(notifRef, {
+    status: 'Accepted',
+    acceptedAt: Date.now(),
+    acceptedBy
+  });
+
+  const counterName = acceptedBy === 'B1' ? 'Restaurant' : 'Fast Food';
+  notifData.items.forEach((item) => {
+    const itemRef = doc(db, 'orderItems', item.itemId);
+    batch.update(itemRef, {
+      status: 'Accepted',
+      kitchenStatus: 'Accepted',
+      acceptedAt: Date.now(),
+      acceptedBy
+    });
+  });
+
+  const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
+  batch.set(timelineRef, {
+    type: 'item_added',
+    message: `Accepted kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
+    actor: acceptedBy as any,
+    timestamp: Date.now()
+  });
+
+  await batch.commit();
+}
+
+export function subscribeToKitchenNotifications(
+  targetCounter: string,
+  callback: (notifications: KitchenNotification[]) => void
+) {
+  if (!isFirebaseConfigured) {
+    return mockDb.subscribe(`kitchenNotifications:${targetCounter}`, callback);
+  }
+
+  const q = query(
+    collection(db, 'kitchenNotifications'),
+    where('targetCounter', '==', targetCounter),
+    where('status', '==', 'Pending')
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const notifications: KitchenNotification[] = [];
+    snapshot.forEach((docSnap) => {
+      notifications.push({ ...docSnap.data(), id: docSnap.id } as KitchenNotification);
+    });
+    notifications.sort((a, b) => b.createdAt - a.createdAt);
+    callback(notifications);
+  }, (error) => {
+    console.error('Failed to subscribe to kitchen notifications:', error);
+    callback([]);
+  });
+}
+
+export async function resetOrderItemKitchenStatus(
+  orderId: string,
+  itemId: string
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return mockDb.resetOrderItemKitchenStatus(orderId, itemId);
+  }
+  const itemRef = doc(db, 'orderItems', itemId);
+  await updateDoc(itemRef, {
+    kitchenStatus: 'Not Sent',
+    status: 'Pending',
+    sentAt: deleteField(),
+    acceptedAt: deleteField(),
+    acceptedBy: deleteField()
+  });
+}
+
+export async function markOrderItemKitchenAcceptedImmediately(
+  orderId: string,
+  itemId: string,
+  actor: string
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return mockDb.markOrderItemKitchenAcceptedImmediately(orderId, itemId, actor);
+  }
+
+  const itemRef = doc(db, 'orderItems', itemId);
+  const itemSnap = await getDoc(itemRef);
+  const itemName = itemSnap.exists() ? (itemSnap.data()?.itemName || 'Item') : 'Item';
+
+  await updateDoc(itemRef, {
+    status: 'Accepted',
+    kitchenStatus: 'Accepted',
+    acceptedAt: Date.now(),
+    acceptedBy: actor
+  });
+
+  const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
+  await setDoc(timelineRef, {
+    type: 'item_added',
+    message: `Accepted local kitchen order: ${itemName}`,
+    actor,
+    timestamp: Date.now()
+  });
+}
+
 export function subscribeToTimeline(orderId: string, callback: (entries: TimelineEntry[]) => void) {
   if (!isFirebaseConfigured) {
     return mockDb.subscribe(`timeline:${orderId}`, callback);
@@ -1245,7 +1554,9 @@ export async function addOrderItem(
         kitchen: menuItem.kitchen,
         notes,
         createdAt: now,
-        status: getCounterForKitchen(menuItem.kitchen) === actor ? 'Accepted' : 'Pending'
+        status: getCounterForKitchen(menuItem.kitchen) === actor ? 'Accepted' : 'Pending',
+        availableAt: getCounterForKitchen(menuItem.kitchen),
+        kitchenStatus: getCounterForKitchen(menuItem.kitchen) === actor ? 'Accepted' : 'Not Sent'
       };
       transaction.set(targetItemRef, newItem);
     }
