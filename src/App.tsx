@@ -8,6 +8,7 @@ import { DashboardPage } from './features/dashboard/DashboardPage';
 import { TableDetailsPage } from './features/tables/TableDetailsPage';
 import { MenuManagementPage } from './features/admin/MenuManagementPage';
 import { ReportsPage } from './features/reports/ReportsPage';
+import { SettingsPage } from './features/settings/SettingsPage';
 
 const ProtectedRoutes: React.FC = () => {
   const { counter, isLoading } = useAuth();
@@ -44,6 +45,7 @@ const AppContent: React.FC = () => {
           <Route path="/table/:id" element={<TableDetailsPage />} />
           <Route path="/menu" element={<MenuManagementPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
         {/* Fallback routing */}

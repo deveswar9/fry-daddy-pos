@@ -8,6 +8,7 @@ import {
   createOrder,
   addOrderItem,
   updateOrderItemQuantity,
+  updateOrderItemServedStatus,
   markOrderPaymentPending,
   collectPayment,
   closeTable,
@@ -120,6 +121,15 @@ export const TableDetailsPage: React.FC = () => {
     if (!order || !counter) return;
     try {
       await updateOrderItemQuantity(order.id, itemId, newQty, counter);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleToggleServed = async (itemId: string, served: boolean) => {
+    if (!order || !counter) return;
+    try {
+      await updateOrderItemServedStatus(order.id, itemId, served, counter);
     } catch (e) {
       console.error(e);
     }
@@ -267,14 +277,23 @@ export const TableDetailsPage: React.FC = () => {
                         transition={{ duration: 0.2 }}
                         className="py-4 flex items-center justify-between gap-4"
                       >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={!!item.served}
+                            onChange={(e) => handleToggleServed(item.id, e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
+                            title="Mark as served"
+                          />
+                        </div>
+
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-sm">{item.itemName || 'Unnamed Item'}</span>
-                            <span className={`px-2 py-0.2 rounded-full text-[9px] font-semibold ${getCategoryBadgeStyles(item.category)}`}>
-                              {item.category || 'Uncategorized'}
+                            <span className={`font-semibold text-sm transition-all ${item.served ? 'line-through text-slate-400 dark:text-slate-500 font-normal' : ''}`}>
+                              {item.itemName || 'Unnamed Item'}
                             </span>
                           </div>
-                          <span className="text-xs text-slate-400 block font-light mt-0.5">₹{item.price} each</span>
+                          <span className={`text-xs block font-light mt-0.5 ${item.served ? 'text-slate-300 dark:text-slate-700' : 'text-slate-400'}`}>₹{item.price} each</span>
                           {item.notes && (
                             <span className="text-[10px] text-amber-600 dark:text-amber-400 italic block mt-1 font-light bg-amber-500/5 px-2 py-0.5 rounded-lg w-max border border-amber-500/10">
                               Note: {item.notes}
@@ -307,6 +326,13 @@ export const TableDetailsPage: React.FC = () => {
                         <div className="w-20 text-right font-extrabold text-sm text-slate-900 dark:text-white">
                           ₹{item.price * item.quantity}
                         </div>
+
+                        {/* Send to Kitchen Button */}
+                        <button
+                          className="px-3 py-1.5 text-xs font-bold rounded-xl border border-indigo-200 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-950/30 transition-all cursor-pointer shadow-xs whitespace-nowrap"
+                        >
+                          Send to Kitchen
+                        </button>
                       </motion.div>
                     ))}
                   </AnimatePresence>

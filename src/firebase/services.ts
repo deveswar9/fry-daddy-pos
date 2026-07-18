@@ -66,6 +66,7 @@ export interface OrderItem {
   kitchen: MenuKitchen;
   notes: string | null;
   createdAt: number;
+  served?: boolean;
 }
 
 export interface TimelineEntry {
@@ -464,6 +465,31 @@ class MockDatabase {
     this.timelines.set(orderId, timeline);
 
     this.notify(`order:${orderId}`);
+    this.notify(`orderItems:${orderId}`);
+    this.notify(`timeline:${orderId}`);
+  }
+
+  public updateOrderItemServedStatus(orderId: string, itemId: string, served: boolean, actor: 'B1' | 'B2') {
+    const items = this.orderItems.get(orderId) || [];
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    item.served = served;
+    this.orderItems.set(orderId, items);
+
+    const now = Date.now();
+    const tlEntry: TimelineEntry = {
+      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      type: 'item_added',
+      message: `${served ? 'Served' : 'Unserved'} ${item.quantity}x ${item.itemName}`,
+      actor,
+      timestamp: now
+    };
+    const timeline = this.timelines.get(orderId) || [];
+    timeline.push(tlEntry);
+    this.timelines.set(orderId, timeline);
+
+    this.saveToStorage();
     this.notify(`orderItems:${orderId}`);
     this.notify(`timeline:${orderId}`);
   }
@@ -1113,6 +1139,38 @@ export async function updateOrderItemQuantity(
       message: quantity <= 0 
         ? `Removed ${itemData.itemName}` 
         : `Updated ${itemData.itemName} quantity: ${oldQuantity} → ${quantity}`,
+      actor,
+      timestamp: now
+    });
+  });
+}
+
+export async function updateOrderItemServedStatus(
+  orderId: string,
+  itemId: string,
+  served: boolean,
+  actor: 'B1' | 'B2'
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return mockDb.updateOrderItemServedStatus(orderId, itemId, served, actor);
+  }
+
+  const itemRef = doc(db, 'orderItems', itemId);
+  const now = Date.now();
+
+  await runTransaction(db, async (transaction) => {
+    const itemDoc = await transaction.get(itemRef);
+    if (!itemDoc.exists()) {
+      throw new Error('Item does not exist');
+    }
+
+    const itemData = itemDoc.data() as OrderItem;
+    transaction.update(itemRef, { served });
+
+    const tlRef = doc(collection(db, 'orders', orderId, 'timeline'));
+    transaction.set(tlRef, {
+      type: 'item_added',
+      message: `${served ? 'Served' : 'Unserved'} ${itemData.quantity}x ${itemData.itemName}`,
       actor,
       timestamp: now
     });

@@ -245,9 +245,6 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
                       <div className="flex-1 pr-3">
                         <div className="flex items-center gap-1.5">
                           <span className="font-semibold text-sm line-clamp-1">{item.name || 'Unnamed Item'}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${getCategoryBadgeStyles(item.category)}`}>
-                            {item.category || 'Uncategorized'}
-                          </span>
                         </div>
                         <span className="text-sm font-extrabold mt-1 text-slate-700 dark:text-slate-300 block">
                           ₹{item.price !== null ? item.price : 'N/A'}

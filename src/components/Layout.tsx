@@ -21,7 +21,10 @@ import {
   Volume2,
   VolumeX,
   Menu,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { voiceAnnouncementService, convertTableToSpeechText } from '@/services/voiceAnnouncement';
@@ -49,7 +52,7 @@ const markIdAsPlayed = (id: string) => {
 
 export const Layout: React.FC = () => {
   const { counter, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, voiceEnabled } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,15 +60,15 @@ export const Layout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const pageLoadTime = useRef<number>(Date.now());
   const acknowledgedIds = useRef<Set<string>>(new Set());
-  const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => {
-    return localStorage.getItem('voice_announcements_enabled') !== 'false';
+  const [isDesktopExpanded, setIsDesktopExpanded] = useState<boolean>(() => {
+    return localStorage.getItem('sidebar_expanded') === 'true';
   });
 
   const activePopup = queue[0] || null;
 
   useEffect(() => {
-    localStorage.setItem('voice_announcements_enabled', String(voiceEnabled));
-  }, [voiceEnabled]);
+    localStorage.setItem('sidebar_expanded', String(isDesktopExpanded));
+  }, [isDesktopExpanded]);
 
   useEffect(() => {
     if (!counter) {
@@ -141,6 +144,9 @@ export const Layout: React.FC = () => {
         } else if (e.key.toLowerCase() === 't') {
           e.preventDefault();
           toggleTheme();
+        } else if (e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          navigate('/settings');
         }
       }
     };
@@ -153,28 +159,45 @@ export const Layout: React.FC = () => {
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, shortcut: 'Alt + D' },
     { path: '/menu', label: 'Menu Management', icon: BookOpen, shortcut: 'Alt + M' },
     { path: '/reports', label: 'Reports', icon: BarChart3, shortcut: 'Alt + R' },
+    { path: '/settings', label: 'Settings', icon: Settings, shortcut: 'Alt + S' },
   ];
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
       {/* Desktop Left Sidebar */}
-      <aside className="hidden md:flex flex-col w-60 h-screen sticky top-0 border-r border-slate-200 dark:border-slate-800 glass dark:bg-slate-950/70 shadow-xs backdrop-blur-md p-4 pt-16 shrink-0">
-        <nav className="flex flex-col gap-2 mt-4">
+      <aside className={`hidden md:flex flex-col h-screen sticky top-0 border-r border-slate-200 dark:border-slate-800 glass dark:bg-slate-950/70 shadow-xs backdrop-blur-md p-4 shrink-0 transition-all duration-300 ${
+        isDesktopExpanded ? 'w-60 pt-16' : 'w-[72px] pt-16'
+      }`}>
+        <div className={`flex mb-4 ${isDesktopExpanded ? 'justify-end' : 'justify-center'}`}>
+          <button
+            onClick={() => setIsDesktopExpanded(!isDesktopExpanded)}
+            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-900/40 cursor-pointer"
+            title={isDesktopExpanded ? "Collapse Sidebar" : "Expand Sidebar"}
+          >
+            {isDesktopExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <nav className="flex flex-col gap-2">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`relative flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer w-full text-left ${
+                className={`relative flex items-center rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer w-full text-left ${
+                  isDesktopExpanded ? 'px-4 py-3 justify-start gap-3' : 'p-3 justify-center'
+                } ${
                   isActive
                     ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30'
                     : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-900/40'
                 }`}
-                title={`Shortcut: ${item.shortcut}`}
+                title={isDesktopExpanded ? `Shortcut: ${item.shortcut}` : `${item.label} (${item.shortcut})`}
               >
                 <item.icon className="w-5 h-5 shrink-0" />
-                <span className="flex-1">{item.label}</span>
+                {isDesktopExpanded && (
+                  <span className="flex-1 transition-opacity duration-300 truncate">{item.label}</span>
+                )}
                 {isActive && (
                   <motion.div
                     layoutId="active-indicator"
@@ -306,37 +329,6 @@ export const Layout: React.FC = () => {
                   {counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}
                 </div>
               </div>
-
-              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-600 dark:text-slate-450 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-850 select-none shadow-xs">
-                <input
-                  type="checkbox"
-                  checked={voiceEnabled}
-                  onChange={(e) => setVoiceEnabled(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
-                />
-                <span className="hidden sm:inline">Voice Announcements</span>
-                {voiceEnabled ? (
-                  <Volume2 className="w-3.5 h-3.5 text-emerald-500" />
-                ) : (
-                  <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-                )}
-              </label>
-
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors shadow-xs cursor-pointer"
-                title="Toggle Theme (Alt + T)"
-              >
-                {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-              </button>
-
-              <button
-                onClick={logout}
-                className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors shadow-xs cursor-pointer"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </header>

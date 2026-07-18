@@ -572,11 +572,7 @@ export const MenuManagementPage: React.FC = () => {
                   /* Display State */
                   <div className="flex flex-col h-full justify-between">
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-2">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${getCategoryBadgeStyles(item.category)}`}>
-                          {item.category}
-                        </span>
-
+                      <div className="flex items-center justify-end gap-2 mb-2">
                         {/* Active toggle switch */}
                         <button 
                           onClick={() => handleToggleActive(item)}

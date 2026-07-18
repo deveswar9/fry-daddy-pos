@@ -12,11 +12,14 @@ const firebaseConfig = {
 };
 
 // Check if credentials are correct and loaded (not dummy placeholder and not empty)
+// In local development (Vite dev server), we strictly fall back to Mock Mode to protect
+// production data, unless VITE_USE_FIREBASE_EMULATOR is explicitly set to 'true' to use emulators.
 export const isFirebaseConfigured = 
   Boolean(firebaseConfig.apiKey) && 
   firebaseConfig.apiKey !== 'your_api_key_here' && 
   Boolean(firebaseConfig.projectId) && 
-  firebaseConfig.projectId !== 'your_project_id_here';
+  firebaseConfig.projectId !== 'your_project_id_here' &&
+  (!import.meta.env.DEV || import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true');
 
 let db: any = null;
 let auth: any = null;
