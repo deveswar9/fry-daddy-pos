@@ -121,12 +121,12 @@ export class OrderNotificationService {
     tableId: string;
     tableName: string;
     sourceCounter: string;
-    items: Array<{ name: string; quantity: number; kitchen: string }>;
+    items: Array<{ name: string; quantity: number; kitchen: string; itemId?: string }>;
   }): Promise<void> {
     const { orderId, tableId, tableName, sourceCounter, items } = params;
 
     // Group items by target counter (excluding the source counter)
-    const groups: Record<string, Array<{ itemName: string; quantity: number; kitchen?: string }>> = {};
+    const groups: Record<string, Array<{ itemName: string; quantity: number; kitchen?: string; itemId?: string }>> = {};
 
     for (const item of items) {
       const targetCounter = getCounterForKitchen(item.kitchen);
@@ -137,7 +137,8 @@ export class OrderNotificationService {
         groups[targetCounter].push({
           itemName: item.name,
           quantity: item.quantity,
-          kitchen: item.kitchen
+          kitchen: item.kitchen,
+          itemId: item.itemId
         });
       }
     }

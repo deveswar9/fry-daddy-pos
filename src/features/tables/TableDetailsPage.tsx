@@ -9,7 +9,7 @@ import {
   addOrderItem,
   updateOrderItemQuantity,
   updateOrderItemServedStatus,
-  acceptSingleOrderItem,
+  markOrderItemKitchenNotified,
   getCounterForKitchen,
   markOrderPaymentPending,
   collectPayment,
@@ -21,7 +21,7 @@ import {
   MenuItem
 } from '@/firebase/services';
 import { useAuth } from '@/context/AuthContext';
-import { AddItemsDialog, getCategoryBadgeStyles } from '@/features/menu/AddItemsDialog';
+import { AddItemsDialog } from '@/features/menu/AddItemsDialog';
 import { OrderNotificationService } from '@/services/OrderNotificationService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -46,6 +46,7 @@ export const TableDetailsPage: React.FC = () => {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [sendingItemIds, setSendingItemIds] = useState<Set<string>>(() => new Set());
 
   // Modal / Confirm state
   const [confirmPaymentOpen, setConfirmPaymentOpen] = useState(false);
@@ -98,20 +99,6 @@ export const TableDetailsPage: React.FC = () => {
         await addOrderItem(orderId, entry.menuItem, entry.quantity, entry.notes, counter);
       }
 
-      // Notify other billing counters of items added belonging to them
-      const itemsForNotif = itemsToAdd.map(e => ({
-        name: e.menuItem.name,
-        quantity: e.quantity,
-        kitchen: e.menuItem.kitchen
-      }));
-
-      await OrderNotificationService.notifyOtherCounters({
-        orderId,
-        tableId: id,
-        tableName: table?.number || id,
-        sourceCounter: counter,
-        items: itemsForNotif
-      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -137,15 +124,38 @@ export const TableDetailsPage: React.FC = () => {
     }
   };
 
-  const handleAcceptItem = async (itemId: string) => {
-    if (!order || !counter) return;
+  const handleSendToKitchen = async (item: OrderItem) => {
+    if (!order || !table || !counter || getCounterForKitchen(item.kitchen) === counter || item.kitchenNotified) return;
+
+    setSendingItemIds((prev) => new Set(prev).add(item.id));
     try {
-      await acceptSingleOrderItem(order.id, itemId, counter);
+      await OrderNotificationService.notifyOtherCounters({
+        orderId: order.id,
+        tableId: table.id,
+        tableName: table.number,
+        sourceCounter: counter,
+        items: [{
+          itemId: item.id,
+          name: item.itemName,
+          quantity: item.quantity,
+          kitchen: item.kitchen
+        }]
+      });
+      await markOrderItemKitchenNotified(order.id, item.id, counter);
+      setSendingItemIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
     } catch (e) {
       console.error(e);
+      setSendingItemIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
     }
   };
-
   const handleRequestBill = async () => {
     if (!order || !counter) return;
     try {
@@ -215,6 +225,123 @@ export const TableDetailsPage: React.FC = () => {
   const fastFoodItems = items.filter(item => item.kitchen === 'Fast Food');
   const restaurantSubtotal = restaurantItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const fastFoodSubtotal = fastFoodItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const renderOrderItem = (item: OrderItem) => {
+    const belongsToCurrentCounter = getCounterForKitchen(item.kitchen) === counter;
+    const isPending = item.status === 'Pending';
+    const isSending = sendingItemIds.has(item.id);
+    const isSentToKitchen = !!item.kitchenNotified || isSending;
+
+    return (
+    <motion.div
+      key={item.id}
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={{ duration: 0.2 }}
+      className="py-4 flex items-center justify-between gap-4"
+    >
+      <div className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={!!item.served}
+          onChange={(e) => handleToggleServed(item.id, e.target.checked)}
+          className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
+          title="Mark as served"
+        />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`font-semibold text-sm transition-all ${item.served ? 'line-through text-slate-400 dark:text-slate-500 font-normal' : ''}`}>
+            {item.itemName || 'Unnamed Item'}
+          </span>
+
+          {isPending ? (
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              Pending Order
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              Order Accepted
+            </span>
+          )}
+        </div>
+        <span className={`text-xs block font-light mt-0.5 ${item.served ? 'text-slate-300 dark:text-slate-700' : 'text-slate-400'}`}>₹{item.price} each</span>
+        {item.notes && (
+          <span className="text-[10px] text-amber-600 dark:text-amber-400 italic block mt-1 font-light bg-amber-500/5 px-2 py-0.5 rounded-lg w-max border border-amber-500/10">
+            Note: {item.notes}
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => handleUpdateQty(item.id, item.quantity - 1)}
+          className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer transition-colors"
+        >
+          {item.quantity === 1 ? <Trash2 className="w-3.5 h-3.5 text-rose-500" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold">-</span>}
+        </button>
+
+        <span className="w-6 text-center font-extrabold text-sm text-slate-800 dark:text-slate-200">
+          {item.quantity}
+        </span>
+
+        <button
+          onClick={() => handleUpdateQty(item.id, item.quantity + 1)}
+          className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer transition-colors"
+        >
+          <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold">+</span>
+        </button>
+      </div>
+
+      <div className="w-20 text-right font-extrabold text-sm text-slate-900 dark:text-white">
+        ₹{item.price * item.quantity}
+      </div>
+
+      {!belongsToCurrentCounter && isPending && (
+        <button
+          onClick={() => handleSendToKitchen(item)}
+          disabled={isSentToKitchen}
+          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-xs whitespace-nowrap ${
+            isSentToKitchen
+              ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 cursor-not-allowed'
+              : 'border-indigo-200 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-950/30 cursor-pointer'
+          }`}
+        >
+          {item.kitchenNotified ? 'Sent to Kitchen' : isSending ? 'Sending...' : 'Send to Kitchen'}
+        </button>
+      )}
+    </motion.div>
+    );
+  };
+
+  const renderKitchenSection = (
+    title: string,
+    counterLabel: string,
+    sectionItems: OrderItem[],
+    subtotal: number,
+    accentClasses: string
+  ) => {
+    if (sectionItems.length === 0) return null;
+
+    return (
+      <section key={title} className="rounded-2xl border border-slate-150 dark:border-slate-850 overflow-hidden">
+        <div className={`px-4 py-3 flex items-center justify-between gap-3 ${accentClasses}`}>
+          <div>
+            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{title}</h3>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{counterLabel}</p>
+          </div>
+          <div className="text-right">
+            <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Subtotal</span>
+            <span className="text-sm font-black text-slate-900 dark:text-white">₹{subtotal}</span>
+          </div>
+        </div>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800 px-4">
+          {sectionItems.map(renderOrderItem)}
+        </div>
+      </section>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6 pb-12">
@@ -277,95 +404,22 @@ export const TableDetailsPage: React.FC = () => {
                   <p className="text-xs font-light">Click "Add Items" below to record the first order.</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800 mt-2">
+                <div className="mt-4 space-y-4">
                   <AnimatePresence initial={false}>
-                    {items.map((item) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="py-4 flex items-center justify-between gap-4"
-                      >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={!!item.served}
-                            onChange={(e) => handleToggleServed(item.id, e.target.checked)}
-                            className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
-                            title="Mark as served"
-                          />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`font-semibold text-sm transition-all ${item.served ? 'line-through text-slate-400 dark:text-slate-500 font-normal' : ''}`}>
-                              {item.itemName || 'Unnamed Item'}
-                            </span>
-                            
-                            {/* Acceptance Status */}
-                            {(!item.status || item.status === 'Accepted') ? (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                Accepted
-                              </span>
-                            ) : (
-                              getCounterForKitchen(item.kitchen) !== counter ? (
-                                <button
-                                  onClick={() => handleAcceptItem(item.id)}
-                                  className="px-2.5 py-0.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white text-[9px] font-bold shadow-xs cursor-pointer transition-colors"
-                                >
-                                  Accept Order
-                                </button>
-                              ) : (
-                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse">
-                                  Pending Acceptance
-                                </span>
-                              )
-                            )}
-                          </div>
-                          <span className={`text-xs block font-light mt-0.5 ${item.served ? 'text-slate-300 dark:text-slate-700' : 'text-slate-400'}`}>₹{item.price} each</span>
-                          {item.notes && (
-                            <span className="text-[10px] text-amber-600 dark:text-amber-400 italic block mt-1 font-light bg-amber-500/5 px-2 py-0.5 rounded-lg w-max border border-amber-500/10">
-                              Note: {item.notes}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Adjust quantities */}
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => handleUpdateQty(item.id, item.quantity - 1)}
-                            className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer transition-colors"
-                          >
-                            {item.quantity === 1 ? <Trash2 className="w-3.5 h-3.5 text-rose-500" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold">-</span>}
-                          </button>
-                          
-                          <span className="w-6 text-center font-extrabold text-sm text-slate-800 dark:text-slate-200">
-                            {item.quantity}
-                          </span>
-
-                          <button
-                            onClick={() => handleUpdateQty(item.id, item.quantity + 1)}
-                            className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer transition-colors"
-                          >
-                            <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold">+</span>
-                          </button>
-                        </div>
-
-                        {/* Subtotal */}
-                        <div className="w-20 text-right font-extrabold text-sm text-slate-900 dark:text-white">
-                          ₹{item.price * item.quantity}
-                        </div>
-
-                        {/* Send to Kitchen Button */}
-                        <button
-                          className="px-3 py-1.5 text-xs font-bold rounded-xl border border-indigo-200 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-950/30 transition-all cursor-pointer shadow-xs whitespace-nowrap"
-                        >
-                          Send to Kitchen
-                        </button>
-                      </motion.div>
-                    ))}
+                    {renderKitchenSection(
+                      'Restaurant Items',
+                      'B1 Counter',
+                      restaurantItems,
+                      restaurantSubtotal,
+                      'bg-emerald-500/5 dark:bg-emerald-400/5 border-b border-emerald-500/10'
+                    )}
+                    {renderKitchenSection(
+                      'Fast Food Items',
+                      'B2 Counter',
+                      fastFoodItems,
+                      fastFoodSubtotal,
+                      'bg-amber-500/5 dark:bg-amber-400/5 border-b border-amber-500/10'
+                    )}
                   </AnimatePresence>
                 </div>
               )}

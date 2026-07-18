@@ -68,6 +68,7 @@ export interface OrderItem {
   createdAt: number;
   served?: boolean;
   status?: 'Pending' | 'Accepted';
+  kitchenNotified?: boolean;
 }
 
 export interface TimelineEntry {
@@ -107,7 +108,7 @@ export interface OrderNotification {
   tableName: string;
   sourceCounter: string;
   targetCounter: string;
-  items: Array<{ itemName: string; quantity: number; kitchen?: string }>;
+  items: Array<{ itemName: string; quantity: number; kitchen?: string; itemId?: string }>;
   status: 'Pending' | 'Accepted';
   createdAt: number;
   acceptedAt: number | null;
@@ -178,9 +179,14 @@ class MockDatabase {
 
   constructor() {
     this.loadFromStorage();
+    window.addEventListener('storage', (event) => {
+      if (!event.key || !event.key.startsWith('r_')) return;
+      this.loadFromStorage(false);
+      this.notifyLocalListeners();
+    });
   }
 
-  private loadFromStorage() {
+  private loadFromStorage(persist = true) {
     try {
       const storedTables = localStorage.getItem('r_tables');
       const storedMenu = localStorage.getItem('r_menu');
@@ -245,7 +251,9 @@ class MockDatabase {
         this.orderNotifications = [];
       }
 
-      this.saveToStorage();
+      if (persist) {
+        this.saveToStorage();
+      }
     } catch (e) {
       this.tables = [...INITIAL_TABLES];
       this.menu = [...INITIAL_MENU];
@@ -279,6 +287,13 @@ class MockDatabase {
       const data = this.getData(key);
       this.listeners.get(key)!.forEach(cb => cb(data));
     }
+  }
+
+  private notifyLocalListeners() {
+    this.listeners.forEach((callbacks, key) => {
+      const data = this.getData(key);
+      callbacks.forEach(cb => cb(data));
+    });
   }
 
   private getData(key: string): any {
@@ -678,8 +693,12 @@ class MockDatabase {
     const notif = this.orderNotifications.find(n => n.id === notificationId);
     if (notif) {
       const items = this.orderItems.get(notif.orderId) || [];
+      const notificationItemIds = new Set((notif.items || []).map((entry) => entry.itemId).filter(Boolean));
       const updatedItems = items.map(item => {
-        if (getCounterForKitchen(item.kitchen) === notif.targetCounter) {
+        const matchesNotification = notificationItemIds.size > 0
+          ? notificationItemIds.has(item.id)
+          : getCounterForKitchen(item.kitchen) === notif.targetCounter;
+        if (matchesNotification) {
           return { ...item, status: 'Accepted' as const };
         }
         return item;
@@ -703,6 +722,31 @@ class MockDatabase {
       this.notify(`timeline:${notif.orderId}`);
       this.notify(`orderNotifications:${notif.targetCounter}`);
     }
+  }
+
+  public markOrderItemKitchenNotified(orderId: string, itemId: string, actor: 'B1' | 'B2') {
+    const items = this.orderItems.get(orderId) || [];
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    item.kitchenNotified = true;
+    this.orderItems.set(orderId, items);
+
+    const now = Date.now();
+    const tlEntry: TimelineEntry = {
+      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      type: 'item_added',
+      message: `Sent ${item.itemName} to kitchen`,
+      actor,
+      timestamp: now
+    };
+    const timeline = this.timelines.get(orderId) || [];
+    timeline.push(tlEntry);
+    this.timelines.set(orderId, timeline);
+
+    this.saveToStorage();
+    this.notify(`orderItems:${orderId}`);
+    this.notify(`timeline:${orderId}`);
   }
 
   public acceptSingleOrderItem(orderId: string, itemId: string, actor: 'B1' | 'B2') {
@@ -963,7 +1007,11 @@ export async function acceptOrderNotification(
   const batch = writeBatch(db);
   itemsSnap.forEach((itemDoc) => {
     const itemData = itemDoc.data() as OrderItem;
-    if (getCounterForKitchen(itemData.kitchen) === notifData.targetCounter) {
+    const notificationItemIds = new Set((notifData.items || []).map((entry) => entry.itemId).filter(Boolean));
+    const matchesNotification = notificationItemIds.size > 0
+      ? notificationItemIds.has(itemDoc.id)
+      : getCounterForKitchen(itemData.kitchen) === notifData.targetCounter;
+    if (matchesNotification) {
       batch.update(itemDoc.ref, { status: 'Accepted' });
     }
   });
@@ -975,6 +1023,30 @@ export async function acceptOrderNotification(
     message: `Accepted ${notifData.targetCounter === 'B1' ? 'Restaurant' : 'Fast Food'} items`,
     actor: notifData.targetCounter as 'B1' | 'B2',
     timestamp: Date.now()
+  });
+}
+
+export async function markOrderItemKitchenNotified(
+  orderId: string,
+  itemId: string,
+  actor: 'B1' | 'B2'
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return mockDb.markOrderItemKitchenNotified(orderId, itemId, actor);
+  }
+
+  const itemRef = doc(db, 'orderItems', itemId);
+  await updateDoc(itemRef, { kitchenNotified: true });
+
+  const now = Date.now();
+  const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
+  const itemSnap = await getDocs(query(collection(db, 'orderItems'), where('__name__', '==', itemId)));
+  const itemName = itemSnap.docs[0]?.data()?.itemName || 'Item';
+  await setDoc(timelineRef, {
+    type: 'item_added',
+    message: `Sent ${itemName} to kitchen`, 
+    actor,
+    timestamp: now
   });
 }
 
