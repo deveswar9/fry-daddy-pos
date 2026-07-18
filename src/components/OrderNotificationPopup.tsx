@@ -3,6 +3,7 @@ import { useAuth } from '@/context/AuthContext';
 import { 
   subscribeToOrderNotifications, 
   acceptOrderNotification,
+  getCounterForKitchen,
   type OrderNotification 
 } from '@/firebase/services';
 import { OrderSoundPlayer } from '@/services/OrderNotificationService';
@@ -160,17 +161,38 @@ export const OrderNotificationPopup: React.FC = () => {
             <div>
               <span className="text-slate-400 font-light block text-xs mb-1.5">Items:</span>
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-955 border border-slate-100 dark:border-slate-850 font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 max-h-[160px] overflow-y-auto">
-                {(activeNotification.items || []).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between gap-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-amber-500 font-semibold">✓</span>
-                      <span className="font-bold">{item.itemName}</span>
+                {(activeNotification.items || []).map((item, idx) => {
+                  const itemKitchen = item.kitchen;
+                  const belongsToCurrent = !itemKitchen || getCounterForKitchen(itemKitchen) === counter;
+                  return (
+                    <div key={idx} className="flex items-center justify-between gap-1.5 py-1 border-b border-slate-100/50 dark:border-slate-800/50 last:border-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-amber-500 font-semibold">✓</span>
+                        <span className="font-bold">{item.itemName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-1.5 py-0.5 rounded-sm bg-slate-200 dark:bg-slate-800 font-bold text-[9px]">
+                          Qty: {item.quantity}
+                        </span>
+                        {belongsToCurrent ? (
+                          <button
+                            onClick={handleAccept}
+                            className="px-2 py-0.5 rounded-md bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-300 dark:text-slate-950 text-white text-[9px] font-extrabold transition-colors cursor-pointer"
+                          >
+                            Accept
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-[9px] font-extrabold cursor-not-allowed opacity-50"
+                          >
+                            Accepted
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-sm bg-slate-200 dark:bg-slate-800 font-bold text-[10px]">
-                      Qty: {item.quantity}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 

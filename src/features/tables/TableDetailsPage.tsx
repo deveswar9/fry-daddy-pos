@@ -9,6 +9,8 @@ import {
   addOrderItem,
   updateOrderItemQuantity,
   updateOrderItemServedStatus,
+  acceptSingleOrderItem,
+  getCounterForKitchen,
   markOrderPaymentPending,
   collectPayment,
   closeTable,
@@ -130,6 +132,15 @@ export const TableDetailsPage: React.FC = () => {
     if (!order || !counter) return;
     try {
       await updateOrderItemServedStatus(order.id, itemId, served, counter);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAcceptItem = async (itemId: string) => {
+    if (!order || !counter) return;
+    try {
+      await acceptSingleOrderItem(order.id, itemId, counter);
     } catch (e) {
       console.error(e);
     }
@@ -292,6 +303,26 @@ export const TableDetailsPage: React.FC = () => {
                             <span className={`font-semibold text-sm transition-all ${item.served ? 'line-through text-slate-400 dark:text-slate-500 font-normal' : ''}`}>
                               {item.itemName || 'Unnamed Item'}
                             </span>
+                            
+                            {/* Acceptance Status */}
+                            {(!item.status || item.status === 'Accepted') ? (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                Accepted
+                              </span>
+                            ) : (
+                              getCounterForKitchen(item.kitchen) !== counter ? (
+                                <button
+                                  onClick={() => handleAcceptItem(item.id)}
+                                  className="px-2.5 py-0.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-white text-[9px] font-bold shadow-xs cursor-pointer transition-colors"
+                                >
+                                  Accept Order
+                                </button>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 animate-pulse">
+                                  Pending Acceptance
+                                </span>
+                              )
+                            )}
                           </div>
                           <span className={`text-xs block font-light mt-0.5 ${item.served ? 'text-slate-300 dark:text-slate-700' : 'text-slate-400'}`}>₹{item.price} each</span>
                           {item.notes && (

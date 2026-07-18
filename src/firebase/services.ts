@@ -67,6 +67,7 @@ export interface OrderItem {
   notes: string | null;
   createdAt: number;
   served?: boolean;
+  status?: 'Pending' | 'Accepted';
 }
 
 export interface TimelineEntry {
@@ -106,7 +107,7 @@ export interface OrderNotification {
   tableName: string;
   sourceCounter: string;
   targetCounter: string;
-  items: Array<{ itemName: string; quantity: number }>;
+  items: Array<{ itemName: string; quantity: number; kitchen?: string }>;
   status: 'Pending' | 'Accepted';
   createdAt: number;
   acceptedAt: number | null;
@@ -392,7 +393,8 @@ class MockDatabase {
         category: menuItem.category,
         kitchen: menuItem.kitchen,
         notes,
-        createdAt: now
+        createdAt: now,
+        status: getCounterForKitchen(menuItem.kitchen) === actor ? 'Accepted' : 'Pending'
       };
       currentItems.push(newItem);
     }
@@ -675,8 +677,57 @@ class MockDatabase {
     );
     const notif = this.orderNotifications.find(n => n.id === notificationId);
     if (notif) {
+      const items = this.orderItems.get(notif.orderId) || [];
+      const updatedItems = items.map(item => {
+        if (getCounterForKitchen(item.kitchen) === notif.targetCounter) {
+          return { ...item, status: 'Accepted' as const };
+        }
+        return item;
+      });
+      this.orderItems.set(notif.orderId, updatedItems);
+
+      const now = Date.now();
+      const tlEntry: TimelineEntry = {
+        id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+        type: 'item_added',
+        message: `Accepted ${notif.targetCounter === 'B1' ? 'Restaurant' : 'Fast Food'} items`,
+        actor: notif.targetCounter as 'B1' | 'B2',
+        timestamp: now
+      };
+      const timeline = this.timelines.get(notif.orderId) || [];
+      timeline.push(tlEntry);
+      this.timelines.set(notif.orderId, timeline);
+
+      this.saveToStorage();
+      this.notify(`orderItems:${notif.orderId}`);
+      this.notify(`timeline:${notif.orderId}`);
       this.notify(`orderNotifications:${notif.targetCounter}`);
     }
+  }
+
+  public acceptSingleOrderItem(orderId: string, itemId: string, actor: 'B1' | 'B2') {
+    const items = this.orderItems.get(orderId) || [];
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    item.status = 'Accepted';
+    this.orderItems.set(orderId, items);
+
+    const now = Date.now();
+    const tlEntry: TimelineEntry = {
+      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      type: 'item_added',
+      message: `Accepted ${item.itemName}`,
+      actor,
+      timestamp: now
+    };
+    const timeline = this.timelines.get(orderId) || [];
+    timeline.push(tlEntry);
+    this.timelines.set(orderId, timeline);
+
+    this.saveToStorage();
+    this.notify(`orderItems:${orderId}`);
+    this.notify(`timeline:${orderId}`);
   }
 
   public getAllOrders(): Order[] {
@@ -893,12 +944,71 @@ export async function acceptOrderNotification(
     return mockDb.acceptOrderNotification(notificationId, acceptedBy);
   }
 
-  const docRef = doc(db, 'orderNotifications', notificationId);
-  await updateDoc(docRef, {
+  const notifRef = doc(db, 'orderNotifications', notificationId);
+  const notifSnap = await getDocs(query(collection(db, 'orderNotifications'), where('__name__', '==', notificationId)));
+  if (notifSnap.empty) return;
+  const notifData = notifSnap.docs[0].data() as OrderNotification;
+
+  await updateDoc(notifRef, {
     status: 'Accepted',
     acceptedAt: Date.now(),
     acceptedBy: acceptedBy
   });
+
+  const q = query(
+    collection(db, 'orderItems'),
+    where('orderId', '==', notifData.orderId)
+  );
+  const itemsSnap = await getDocs(q);
+  const batch = writeBatch(db);
+  itemsSnap.forEach((itemDoc) => {
+    const itemData = itemDoc.data() as OrderItem;
+    if (getCounterForKitchen(itemData.kitchen) === notifData.targetCounter) {
+      batch.update(itemDoc.ref, { status: 'Accepted' });
+    }
+  });
+  await batch.commit();
+
+  const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
+  await setDoc(timelineRef, {
+    type: 'item_added',
+    message: `Accepted ${notifData.targetCounter === 'B1' ? 'Restaurant' : 'Fast Food'} items`,
+    actor: notifData.targetCounter as 'B1' | 'B2',
+    timestamp: Date.now()
+  });
+}
+
+export async function acceptSingleOrderItem(
+  orderId: string,
+  itemId: string,
+  actor: 'B1' | 'B2'
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return mockDb.acceptSingleOrderItem(orderId, itemId, actor);
+  }
+
+  const itemRef = doc(db, 'orderItems', itemId);
+  await updateDoc(itemRef, { status: 'Accepted' });
+
+  const now = Date.now();
+  const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
+  try {
+    const itemSnap = await getDocs(query(collection(db, 'orderItems'), where('__name__', '==', itemId)));
+    const itemName = itemSnap.docs[0]?.data()?.itemName || 'Item';
+    await setDoc(timelineRef, {
+      type: 'item_added',
+      message: `Accepted ${itemName}`,
+      actor,
+      timestamp: now
+    });
+  } catch (err) {
+    await setDoc(timelineRef, {
+      type: 'item_added',
+      message: `Accepted item`,
+      actor,
+      timestamp: now
+    });
+  }
 }
 
 export function subscribeToOrderNotifications(
@@ -1055,7 +1165,8 @@ export async function addOrderItem(
         category: menuItem.category,
         kitchen: menuItem.kitchen,
         notes,
-        createdAt: now
+        createdAt: now,
+        status: getCounterForKitchen(menuItem.kitchen) === actor ? 'Accepted' : 'Pending'
       };
       transaction.set(targetItemRef, newItem);
     }

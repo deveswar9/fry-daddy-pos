@@ -126,7 +126,7 @@ export class OrderNotificationService {
     const { orderId, tableId, tableName, sourceCounter, items } = params;
 
     // Group items by target counter (excluding the source counter)
-    const groups: Record<string, Array<{ itemName: string; quantity: number }>> = {};
+    const groups: Record<string, Array<{ itemName: string; quantity: number; kitchen?: string }>> = {};
 
     for (const item of items) {
       const targetCounter = getCounterForKitchen(item.kitchen);
@@ -136,7 +136,8 @@ export class OrderNotificationService {
         }
         groups[targetCounter].push({
           itemName: item.name,
-          quantity: item.quantity
+          quantity: item.quantity,
+          kitchen: item.kitchen
         });
       }
     }
