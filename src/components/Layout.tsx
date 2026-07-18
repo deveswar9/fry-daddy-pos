@@ -19,7 +19,9 @@ import {
   Check,
   CreditCard,
   Volume2,
-  VolumeX
+  VolumeX,
+  Menu,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { voiceAnnouncementService, convertTableToSpeechText } from '@/services/voiceAnnouncement';
@@ -52,6 +54,7 @@ export const Layout: React.FC = () => {
   const location = useLocation();
 
   const [queue, setQueue] = useState<PaymentNotification[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const pageLoadTime = useRef<number>(Date.now());
   const acknowledgedIds = useRef<Set<string>>(new Set());
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => {
@@ -153,137 +156,205 @@ export const Layout: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
-      <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 glass dark:bg-slate-950/70 shadow-sm backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')}>
-            <div className="p-1.5 bg-emerald-500/10 dark:bg-emerald-400/15 rounded-xl border border-emerald-500/20 dark:border-emerald-400/20">
-              <ChefHat className="w-6 h-6 text-emerald-500 dark:text-emerald-400" />
-            </div>
-            <div>
-              <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
-                Fry Daddy
-              </span>
-              <span className="text-[10px] font-medium text-slate-400 block -mt-1 tracking-wider uppercase">
-                Live Billing
-              </span>
-            </div>
-          </div>
-
-          <nav className="hidden md:flex items-center space-x-1">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`relative flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${
-                    isActive
-                      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30'
-                      : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-900/40'
-                  }`}
-                  title={`Shortcut: ${item.shortcut}`}
-                >
-                  <item.icon className="w-4.5 h-4.5" />
-                  {item.label}
-                  {isActive && (
-                    <motion.div
-                      layoutId="active-indicator"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-500 dark:bg-emerald-400 rounded-full"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="hidden sm:inline text-xs text-slate-400 font-light">Active:</span>
-              <div
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-xs ${
-                  counter === 'B1'
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-400/10'
-                    : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 dark:bg-indigo-400/10'
-                }`}
-                title="Active counter"
-              >
-                <span className={`w-2 h-2 rounded-full ${counter === 'B1' ? 'bg-emerald-500' : 'bg-indigo-500'} animate-pulse`} />
-                {counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}
-              </div>
-            </div>
-
-            <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-600 dark:text-slate-450 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-850 select-none shadow-xs">
-              <input
-                type="checkbox"
-                checked={voiceEnabled}
-                onChange={(e) => setVoiceEnabled(e.target.checked)}
-                className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
-              />
-              <span className="hidden sm:inline">Voice Announcements</span>
-              {voiceEnabled ? (
-                <Volume2 className="w-3.5 h-3.5 text-emerald-500" />
-              ) : (
-                <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-              )}
-            </label>
-
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors shadow-xs cursor-pointer"
-              title="Toggle Theme (Alt + T)"
-            >
-              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-            </button>
-
-            <button
-              onClick={logout}
-              className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors shadow-xs cursor-pointer"
-              title="Sign Out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
-      </main>
-
-      <footer className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md shadow-lg">
-        <div className="flex justify-around items-center h-16">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      {/* Desktop Left Sidebar */}
+      <aside className="hidden md:flex flex-col w-60 h-screen sticky top-0 border-r border-slate-200 dark:border-slate-800 glass dark:bg-slate-950/70 shadow-xs backdrop-blur-md p-4 pt-16 shrink-0">
+        <nav className="flex flex-col gap-2 mt-4">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center w-20 h-full gap-1 cursor-pointer transition-all ${
+                className={`relative flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer w-full text-left ${
                   isActive
-                    ? 'text-emerald-500 dark:text-emerald-400'
-                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                    ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-900/40'
                 }`}
+                title={`Shortcut: ${item.shortcut}`}
               >
-                <item.icon className="w-5.5 h-5.5" />
-                <span className="text-[10px] font-medium">{item.label.split(' ')[0]}</span>
+                <item.icon className="w-5 h-5 shrink-0" />
+                <span className="flex-1">{item.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="active-indicator"
+                    className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-full"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
               </button>
             );
           })}
-        </div>
-      </footer>
-      <div className="md:hidden h-16" />
+        </nav>
+      </aside>
+
+      {/* Mobile Drawer (Sidebar) */}
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsSidebarOpen(false)}
+              className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 md:hidden"
+            />
+            {/* Drawer */}
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 bottom-0 w-60 z-50 md:hidden bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-4 flex flex-col"
+            >
+              {/* Close row */}
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 bg-emerald-500/10 dark:bg-emerald-400/15 rounded-xl border border-emerald-500/20 dark:border-emerald-400/20">
+                    <ChefHat className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
+                  </div>
+                  <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white">
+                    Fry Daddy
+                  </span>
+                </div>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850 text-slate-500 dark:text-slate-400 cursor-pointer"
+                  aria-label="Close menu"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Navigation Items */}
+              <nav className="flex flex-col gap-2">
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <button
+                      key={item.path}
+                      onClick={() => {
+                        navigate(item.path);
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`relative flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer w-full text-left ${
+                        isActive
+                          ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/30'
+                          : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-900/40'
+                      }`}
+                    >
+                      <item.icon className="w-5 h-5 shrink-0" />
+                      <span className="flex-1">{item.label}</span>
+                      {isActive && (
+                        <motion.div
+                          layoutId="active-indicator-mobile"
+                          className="absolute left-0 top-2 bottom-2 w-1 bg-emerald-500 dark:bg-emerald-400 rounded-full"
+                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main Right Container */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 glass dark:bg-slate-950/70 shadow-sm backdrop-blur-md">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Mobile Hamburger menu button */}
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="md:hidden p-2 -ml-2 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-900/40 cursor-pointer"
+                aria-label="Open menu"
+              >
+                <Menu className="w-5.5 h-5.5" />
+              </button>
+
+              <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => navigate('/')}>
+                <div className="p-1.5 bg-emerald-500/10 dark:bg-emerald-400/15 rounded-xl border border-emerald-500/20 dark:border-emerald-400/20">
+                  <ChefHat className="w-6 h-6 text-emerald-500 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
+                    Fry Daddy
+                  </span>
+                  <span className="text-[10px] font-medium text-slate-400 block -mt-1 tracking-wider uppercase">
+                    Live Billing
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="hidden sm:inline text-xs text-slate-400 font-light">Active:</span>
+                <div
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-xs ${
+                    counter === 'B1'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 dark:bg-emerald-400/10'
+                      : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 dark:bg-indigo-400/10'
+                  }`}
+                  title="Active counter"
+                >
+                  <span className={`w-2 h-2 rounded-full ${counter === 'B1' ? 'bg-emerald-500' : 'bg-indigo-500'} animate-pulse`} />
+                  {counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}
+                </div>
+              </div>
+
+              <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-600 dark:text-slate-450 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-850 select-none shadow-xs">
+                <input
+                  type="checkbox"
+                  checked={voiceEnabled}
+                  onChange={(e) => setVoiceEnabled(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
+                />
+                <span className="hidden sm:inline">Voice Announcements</span>
+                {voiceEnabled ? (
+                  <Volume2 className="w-3.5 h-3.5 text-emerald-500" />
+                ) : (
+                  <VolumeX className="w-3.5 h-3.5 text-slate-400" />
+                )}
+              </label>
+
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-850 transition-colors shadow-xs cursor-pointer"
+                title="Toggle Theme (Alt + T)"
+              >
+                {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </button>
+
+              <button
+                onClick={logout}
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors shadow-xs cursor-pointer"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
 
       {/* Realtime Cross-Counter Payment Popup Modal */}
       <AnimatePresence>
@@ -334,7 +405,7 @@ export const Layout: React.FC = () => {
 
                 <div>
                   <span className="text-slate-400 font-light block text-xs mb-1.5">Items Paid:</span>
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 max-h-[160px] overflow-y-auto">
+                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 font-mono text-xs space-y-1.5 text-slate-800 dark:text-slate-200 max-h-[160px] overflow-y-auto font-sans">
                     {(activePopup.items || activePopup.itemNames || []).map((name, i) => (
                       <div key={i} className="flex items-center gap-1.5">
                         <span className="text-emerald-500 font-semibold">✓</span>
