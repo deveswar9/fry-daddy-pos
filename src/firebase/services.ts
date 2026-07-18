@@ -13,6 +13,7 @@ import {
   runTransaction,
   writeBatch,
   Timestamp,
+  getDoc,
   getDocs
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './config';
@@ -989,15 +990,9 @@ export async function acceptOrderNotification(
   }
 
   const notifRef = doc(db, 'orderNotifications', notificationId);
-  const notifSnap = await getDocs(query(collection(db, 'orderNotifications'), where('__name__', '==', notificationId)));
-  if (notifSnap.empty) return;
-  const notifData = notifSnap.docs[0].data() as OrderNotification;
-
-  await updateDoc(notifRef, {
-    status: 'Accepted',
-    acceptedAt: Date.now(),
-    acceptedBy: acceptedBy
-  });
+  const notifSnap = await getDoc(notifRef);
+  if (!notifSnap.exists()) return;
+  const notifData = notifSnap.data() as OrderNotification;
 
   const q = query(
     collection(db, 'orderItems'),
@@ -1016,6 +1011,12 @@ export async function acceptOrderNotification(
     }
   });
   await batch.commit();
+
+  await updateDoc(notifRef, {
+    status: 'Accepted',
+    acceptedAt: Date.now(),
+    acceptedBy: acceptedBy
+  });
 
   const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
   await setDoc(timelineRef, {
@@ -1036,12 +1037,13 @@ export async function markOrderItemKitchenNotified(
   }
 
   const itemRef = doc(db, 'orderItems', itemId);
+  const itemSnap = await getDoc(itemRef);
+  const itemName = itemSnap.exists() ? (itemSnap.data()?.itemName || 'Item') : 'Item';
+
   await updateDoc(itemRef, { kitchenNotified: true });
 
   const now = Date.now();
   const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
-  const itemSnap = await getDocs(query(collection(db, 'orderItems'), where('__name__', '==', itemId)));
-  const itemName = itemSnap.docs[0]?.data()?.itemName || 'Item';
   await setDoc(timelineRef, {
     type: 'item_added',
     message: `Sent ${itemName} to kitchen`, 
@@ -1065,8 +1067,8 @@ export async function acceptSingleOrderItem(
   const now = Date.now();
   const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
   try {
-    const itemSnap = await getDocs(query(collection(db, 'orderItems'), where('__name__', '==', itemId)));
-    const itemName = itemSnap.docs[0]?.data()?.itemName || 'Item';
+    const itemSnap = await getDoc(itemRef);
+    const itemName = itemSnap.exists() ? (itemSnap.data()?.itemName || 'Item') : 'Item';
     await setDoc(timelineRef, {
       type: 'item_added',
       message: `Accepted ${itemName}`,
