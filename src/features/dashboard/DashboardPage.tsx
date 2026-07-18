@@ -246,30 +246,36 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-3 gap-4 py-4">
-            {insideTables.map((table) => (
-              <motion.button
-                key={table.id}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleTableClick(table.id)}
-                className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center cursor-pointer transition-all duration-300 card-hover ${getStatusColor(
-                  table.status
-                )}`}
-              >
-                <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
-                <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
-                  {getStatusLabel(table)}
-                </span>
-                
-                {/* Visual indicator for counter assignment */}
-                {table.status === 'Payment Pending' && (
-                  <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white font-bold items-center justify-center">!</span>
-                  </div>
-                )}
-              </motion.button>
-            ))}
+            {insideTables.map((table) => {
+              const isDisabled = counter === 'B2';
+              return (
+                <motion.button
+                  key={table.id}
+                  disabled={isDisabled}
+                  whileHover={isDisabled ? {} : { scale: 1.03 }}
+                  whileTap={isDisabled ? {} : { scale: 0.98 }}
+                  onClick={() => handleTableClick(table.id)}
+                  className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 ${
+                    isDisabled 
+                      ? 'opacity-40 cursor-not-allowed grayscale pointer-events-none' 
+                      : 'cursor-pointer card-hover'
+                  } ${getStatusColor(table.status)}`}
+                >
+                  <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
+                  <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
+                    {getStatusLabel(table)}
+                  </span>
+                  
+                  {/* Visual indicator for counter assignment */}
+                  {table.status === 'Payment Pending' && (
+                    <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white font-bold items-center justify-center">!</span>
+                    </div>
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
         </div>
 
@@ -298,30 +304,36 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4 py-4">
-            {outsideTables.map((table) => (
-              <motion.button
-                key={table.id}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleTableClick(table.id)}
-                className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center cursor-pointer transition-all duration-300 card-hover ${getStatusColor(
-                  table.status
-                )}`}
-              >
-                <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
-                <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
-                  {getStatusLabel(table)}
-                </span>
+            {outsideTables.map((table) => {
+              const isDisabled = counter === 'B1';
+              return (
+                <motion.button
+                  key={table.id}
+                  disabled={isDisabled}
+                  whileHover={isDisabled ? {} : { scale: 1.03 }}
+                  whileTap={isDisabled ? {} : { scale: 0.98 }}
+                  onClick={() => handleTableClick(table.id)}
+                  className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 ${
+                    isDisabled 
+                      ? 'opacity-40 cursor-not-allowed grayscale pointer-events-none' 
+                      : 'cursor-pointer card-hover'
+                  } ${getStatusColor(table.status)}`}
+                >
+                  <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
+                  <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
+                    {getStatusLabel(table)}
+                  </span>
 
-                {/* Visual indicator for counter assignment */}
-                {table.status === 'Payment Pending' && (
-                  <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white font-bold items-center justify-center">!</span>
-                  </div>
-                )}
-              </motion.button>
-            ))}
+                  {/* Visual indicator for counter assignment */}
+                  {table.status === 'Payment Pending' && (
+                    <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white font-bold items-center justify-center">!</span>
+                    </div>
+                  )}
+                </motion.button>
+              );
+            })}
           </div>
         </div>
 
