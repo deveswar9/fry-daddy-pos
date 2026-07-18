@@ -138,7 +138,7 @@ export class OrderNotificationService {
           itemName: item.name,
           quantity: item.quantity,
           kitchen: item.kitchen,
-          itemId: item.itemId
+          ...(item.itemId ? { itemId: item.itemId } : {})
         });
       }
     }

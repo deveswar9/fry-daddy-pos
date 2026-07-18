@@ -299,17 +299,24 @@ export const TableDetailsPage: React.FC = () => {
       </div>
 
       {!belongsToCurrentCounter && isPending && (
-        <button
-          onClick={() => handleSendToKitchen(item)}
-          disabled={isSentToKitchen}
-          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-xs whitespace-nowrap ${
-            isSentToKitchen
-              ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 cursor-not-allowed'
-              : 'border-indigo-200 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-950/30 cursor-pointer'
-          }`}
-        >
-          {item.kitchenNotified ? 'Sent to Kitchen' : isSending ? 'Sending...' : 'Send to Kitchen'}
-        </button>
+        item.kitchenNotified ? (
+          <span className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 shadow-xs whitespace-nowrap">
+            Sent to Kitchen
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => handleSendToKitchen(item)}
+            disabled={isSending}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-xs whitespace-nowrap ${
+              isSending
+                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 cursor-not-allowed'
+                : 'border-indigo-200 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-950/30 cursor-pointer'
+            }`}
+          >
+            {isSending ? 'Sending...' : 'Send to Kitchen'}
+          </button>
+        )
       )}
     </motion.div>
     );

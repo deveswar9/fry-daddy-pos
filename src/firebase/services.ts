@@ -1095,17 +1095,22 @@ export function subscribeToOrderNotifications(
 
   const q = query(
     collection(db, 'orderNotifications'),
-    where('targetCounter', '==', targetCounter),
-    where('status', '==', 'Pending')
+    where('targetCounter', '==', targetCounter)
   );
 
   return onSnapshot(q, (snapshot) => {
     const notifications: OrderNotification[] = [];
     snapshot.forEach((docSnap) => {
-      notifications.push({ ...docSnap.data(), id: docSnap.id } as OrderNotification);
+      const notification = { ...docSnap.data(), id: docSnap.id } as OrderNotification;
+      if (notification.status === 'Pending') {
+        notifications.push(notification);
+      }
     });
     notifications.sort((a, b) => b.createdAt - a.createdAt);
     callback(notifications);
+  }, (error) => {
+    console.error('Failed to subscribe to order notifications:', error);
+    callback([]);
   });
 }
 
