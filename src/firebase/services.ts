@@ -356,6 +356,12 @@ class MockDatabase {
         .filter((entry) => entry.targetCounter === targetCounter && entry.status === 'Pending')
         .sort((a, b) => b.createdAt - a.createdAt);
     }
+    if (key.startsWith('allKitchenNotifications:')) {
+      const targetCounter = key.split(':')[1];
+      return this.kitchenNotifications
+        .filter((entry) => entry.targetCounter === targetCounter)
+        .sort((a, b) => b.createdAt - a.createdAt);
+    }
     if (key.startsWith('orderItems:')) {
       const orderId = key.split(':')[1];
       return [...(this.orderItems.get(orderId) || [])].sort((a, b) => b.createdAt - a.createdAt);
@@ -498,6 +504,10 @@ class MockDatabase {
     const item = items.find(i => i.id === itemId);
     if (!order || !item) return;
 
+    if (item.price === null) {
+      throw new Error('Menu item needs price verification before ordering');
+    }
+
     const oldQuantity = item.quantity;
     if (quantity <= 0) {
       // Remove item
@@ -625,8 +635,14 @@ class MockDatabase {
 
     Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
       if (targetCounter !== collectedBy && list.length > 0) {
-        const itemNames = list.map((item) => item.itemName);
-        const paidAmount = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
+        // Check for null item price when creating notifications
+        const validItems = list.filter(item => item.price !== null);
+        if (validItems.length === 0) {
+          return; // Skip if no valid items (all have null price)
+        }
+
+        const itemNames = validItems.map((item) => item.itemName);
+        const paidAmount = validItems.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
         const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
 
         const notification: PaymentNotification = {
@@ -794,6 +810,7 @@ class MockDatabase {
     this.saveToStorage();
     this.notify(`orderItems:${orderId}`);
     this.notify(`kitchenNotifications:${notification.targetCounter}`);
+    this.notify(`allKitchenNotifications:${notification.targetCounter}`);
     return id;
   }
 
@@ -837,6 +854,7 @@ class MockDatabase {
       this.notify(`orderItems:${notif.orderId}`);
       this.notify(`timeline:${notif.orderId}`);
       this.notify(`kitchenNotifications:${notif.targetCounter}`);
+      this.notify(`allKitchenNotifications:${notif.targetCounter}`);
     }
   }
 
@@ -847,7 +865,6 @@ class MockDatabase {
         return {
           ...item,
           kitchenStatus: 'Not Sent' as const,
-          status: 'Pending' as const,
           sentAt: undefined,
           acceptedAt: undefined,
           acceptedBy: undefined
@@ -927,6 +944,7 @@ class MockDatabase {
     if (!item) return;
 
     item.status = 'Accepted';
+    item.kitchenStatus = 'Accepted';
     this.orderItems.set(orderId, items);
 
     const now = Date.now();
@@ -1233,7 +1251,7 @@ export async function acceptSingleOrderItem(
   }
 
   const itemRef = doc(db, 'orderItems', itemId);
-  await updateDoc(itemRef, { status: 'Accepted' });
+  await updateDoc(itemRef, { status: 'Accepted', kitchenStatus: 'Accepted' });
 
   const now = Date.now();
   const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
@@ -1377,6 +1395,32 @@ export function subscribeToKitchenNotifications(
   });
 }
 
+export function subscribeToAllKitchenNotifications(
+  targetCounter: string,
+  callback: (notifications: KitchenNotification[]) => void
+) {
+  if (!isFirebaseConfigured) {
+    return mockDb.subscribe(`allKitchenNotifications:${targetCounter}`, callback);
+  }
+
+  const q = query(
+    collection(db, 'kitchenNotifications'),
+    where('targetCounter', '==', targetCounter)
+  );
+
+  return onSnapshot(q, (snapshot) => {
+    const notifications: KitchenNotification[] = [];
+    snapshot.forEach((docSnap) => {
+      notifications.push({ ...docSnap.data(), id: docSnap.id } as KitchenNotification);
+    });
+    notifications.sort((a, b) => b.createdAt - a.createdAt);
+    callback(notifications);
+  }, (error) => {
+    console.error('Failed to subscribe to all kitchen notifications:', error);
+    callback([]);
+  });
+}
+
 export async function resetOrderItemKitchenStatus(
   orderId: string,
   itemId: string
@@ -1387,7 +1431,6 @@ export async function resetOrderItemKitchenStatus(
   const itemRef = doc(db, 'orderItems', itemId);
   await updateDoc(itemRef, {
     kitchenStatus: 'Not Sent',
-    status: 'Pending',
     sentAt: deleteField(),
     acceptedAt: deleteField(),
     acceptedBy: deleteField()
@@ -1618,6 +1661,9 @@ export async function updateOrderItemQuantity(
 
     const oldQuantity = itemData.quantity;
     const itemPrice = itemData.price;
+    if (itemPrice === null) {
+      throw new Error('Menu item needs price verification before ordering');
+    }
     const diffQuantity = quantity - oldQuantity;
     const priceDiff = itemPrice * diffQuantity;
 
@@ -1717,13 +1763,25 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
   }
 
   const orderRef = doc(db, 'orders', orderId);
-  const now = Date.now();
   const itemsQuery = query(collection(db, 'orderItems'), where('orderId', '==', orderId));
+
+  // Step 1: Read the order and items outside the transaction
+  const orderSnap = await getDoc(orderRef);
+  if (!orderSnap.exists()) {
+    throw new Error('Order not found');
+  }
+  const orderData = orderSnap.data() as Order;
+
   const itemSnapshot = await getDocs(itemsQuery);
-  
-  const itemsByCounter: Record<string, OrderItem[]> = {};
+  const items: OrderItem[] = [];
   itemSnapshot.forEach((itemDoc) => {
     const item = { id: itemDoc.id, ...itemDoc.data() } as OrderItem;
+    items.push(item);
+  });
+
+  // Group items by target counter (for the other counter)
+  const itemsByCounter: Record<string, OrderItem[]> = {};
+  items.forEach((item) => {
     const target = KITCHEN_TO_COUNTER[item.kitchen] || 'B1';
     if (!itemsByCounter[target]) {
       itemsByCounter[target] = [];
@@ -1731,9 +1789,17 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
     itemsByCounter[target].push(item);
   });
 
+  const now = Date.now();
+
+  // Step 2: Run a transaction to update the order, table, and add a timeline entry
+  const tlRef = doc(collection(db, 'orders', orderId, 'timeline'));
+
   await runTransaction(db, async (transaction) => {
     const orderDoc = await transaction.get(orderRef);
-    if (!orderDoc.exists()) throw new Error('Order not found');
+    if (!orderDoc.exists()) {
+      throw new Error('Order not found');
+    }
+
     const orderData = orderDoc.data() as Order;
 
     const tableRef = doc(db, 'tables', orderData.tableId);
@@ -1753,44 +1819,58 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
       lastPaymentTimestamp: now
     });
 
-    const tlRef = doc(collection(db, 'orders', orderId, 'timeline'));
     transaction.set(tlRef, {
       type: 'payment_received',
       message: `Payment collected by ${collectedBy}`,
       actor: collectedBy,
       timestamp: now
     });
-
-    Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
-      if (targetCounter !== collectedBy && list.length > 0) {
-        const itemNames = list.map((item) => item.itemName);
-        const paidAmount = list.reduce((sum, item) => sum + item.price * item.quantity, 0);
-        const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
-
-        const notificationRef = doc(collection(db, 'paymentNotifications'));
-        transaction.set(notificationRef, {
-          orderId,
-          tableId: orderData.tableId,
-          tableName,
-          paidByCounter: collectedBy,
-          targetCounter,
-          paymentMethod,
-          paidAmount,
-          items: itemNames,
-          status: 'pending',
-          createdAt: now,
-          acknowledgedAt: null,
-          read: false,
-
-          // Backwards compatibility fields:
-          sourceCounter: collectedBy,
-          itemNames,
-          total: paidAmount,
-          message: `Bill paid at Counter ${collectedBy} for: ${itemNames.join(', ')}`,
-        });
-      }
-    });
   });
+
+  // Step 3: Outside the transaction, create payment notifications for items prepared by the other counter (using a batch)
+  // Get table name for the notification (outside transaction)
+  const tableRefForName = doc(db, 'tables', orderData.tableId);
+  const tableSnap = await getDoc(tableRefForName);
+  const tableNameForNotification = tableSnap.exists() ? (tableSnap.data()?.number || orderData.tableId) : orderData.tableId;
+
+  const batch = writeBatch(db);
+  Object.entries(itemsByCounter).forEach(([targetCounter, list]) => {
+    if (targetCounter !== collectedBy && list.length > 0) {
+      // Check for null item price when creating notifications
+      const validItems = list.filter(item => item.price !== null);
+      if (validItems.length === 0) {
+        return; // Skip if no valid items (all have null price)
+      }
+
+      const itemNames = validItems.map((item) => item.itemName);
+      const paidAmount = validItems.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0);
+      const paymentMethod = collectedBy === 'B1' ? 'UPI' : (collectedBy === 'B2' ? 'Cash' : 'UPI');
+
+      const notificationRef = doc(collection(db, 'paymentNotifications'));
+      batch.set(notificationRef, {
+        orderId,
+        tableId: orderData.tableId,
+        tableName: tableNameForNotification,
+        paidByCounter: collectedBy,
+        targetCounter,
+        paymentMethod,
+        paidAmount,
+        items: itemNames,
+        status: 'pending',
+        createdAt: now,
+        acknowledgedAt: null,
+        read: false,
+
+        // Backwards compatibility fields:
+        sourceCounter: collectedBy,
+        itemNames,
+        total: paidAmount,
+        message: `Bill paid at Counter ${collectedBy} for: ${itemNames.join(', ')}`,
+      });
+    }
+  });
+
+  await batch.commit();
 }
 
 export async function closeTable(orderId: string, actor: 'B1' | 'B2'): Promise<void> {
