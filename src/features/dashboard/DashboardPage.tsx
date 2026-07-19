@@ -215,8 +215,8 @@ export const DashboardPage: React.FC = () => {
     return (
       <div className="flex flex-col gap-6 py-6 animate-pulse">
         {/* Metric Skeletons */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[...Array(2)].map((_, i) => (
             <div key={i} className="h-24 bg-slate-200 dark:bg-slate-900 rounded-3xl" />
           ))}
         </div>
@@ -291,7 +291,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
       {/* Analytics Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
         <motion.div 
           whileHover={{ y: -2 }}
           className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xs flex items-center justify-between"
@@ -315,32 +315,6 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div className="p-3 bg-rose-500/10 text-rose-500 rounded-2xl">
             <CreditCard className="w-6 h-6" />
-          </div>
-        </motion.div>
-
-        <motion.div 
-          whileHover={{ y: -2 }}
-          className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xs flex items-center justify-between"
-        >
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Tables Paid</span>
-            <h3 className="text-3xl font-extrabold mt-1 text-indigo-500">{paidCount}</h3>
-          </div>
-          <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-2xl">
-            <Sparkles className="w-6 h-6" />
-          </div>
-        </motion.div>
-
-        <motion.div 
-          whileHover={{ y: -2 }}
-          className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xs flex items-center justify-between"
-        >
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">In Cleaning</span>
-            <h3 className="text-3xl font-extrabold mt-1 text-slate-500">{cleaningCount}</h3>
-          </div>
-          <div className="p-3 bg-slate-500/10 text-slate-500 rounded-2xl">
-            <Clock className="w-6 h-6" />
           </div>
         </motion.div>
       </div>
