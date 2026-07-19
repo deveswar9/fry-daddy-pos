@@ -356,7 +356,7 @@ export const DashboardPage: React.FC = () => {
           {/* Seating Layout Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            {/* Column 1: Restaurant Dining if B1, else Preparing Orders */}
+            {/* Column 1: Dining (Restaurant Dining if B1, Fast Food Dining if B2) */}
             {counter === 'B1' ? (
               /* Inside Seating Section (B1 Primary Area) */
               <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
@@ -404,13 +404,6 @@ export const DashboardPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              renderPreparingOrders()
-            )}
-
-            {/* Column 2: Preparing Orders if B1, else Fast Food Dining */}
-            {counter === 'B1' ? (
-              renderPreparingOrders()
-            ) : (
               /* Outside Seating Section (B2 Primary Area) */
               <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
                 {/* Subtle glow if active area */}
@@ -457,6 +450,9 @@ export const DashboardPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Column 2: Preparing Orders */}
+            {renderPreparingOrders()}
 
           </div>
 
