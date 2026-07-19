@@ -45,11 +45,8 @@ export const MenuManagementPage: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = subscribeToMenu((data) => {
-      // Defer state updates to allow Framer Motion's mount transition to complete smoothly
-      setTimeout(() => {
-        setMenu(data);
-        setIsLoading(false);
-      }, 0);
+      setMenu(data);
+      setIsLoading(false);
     });
     return unsubscribe;
   }, []);
@@ -281,23 +278,22 @@ export const MenuManagementPage: React.FC = () => {
           </motion.form>
         )}
       </AnimatePresence>
-
       {/* Filters Area */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl shadow-sm">
+      <div className="flex flex-col gap-4 p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-2xl shadow-sm">
         {/* Search */}
-        <div className="relative flex-1">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Search items..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-955 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
           />
         </div>
 
         {/* Categories Horizontal filters */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full">
           {categories.map((cat) => (
             <button
               key={cat}
@@ -305,7 +301,7 @@ export const MenuManagementPage: React.FC = () => {
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap cursor-pointer transition-all ${
                 selectedCategory === cat
                   ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-950'
-                  : 'bg-slate-50 dark:bg-slate-950 text-slate-500 dark:text-slate-400 border border-slate-200/50 dark:border-slate-850 hover:bg-slate-100 dark:hover:bg-slate-900'
+                  : 'bg-slate-50 dark:bg-slate-955 text-slate-505 dark:text-slate-400 border border-slate-200/50 dark:border-slate-850 hover:bg-slate-100 dark:hover:bg-slate-900'
               }`}
             >
               {cat}
