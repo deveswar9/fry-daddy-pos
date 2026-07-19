@@ -1393,33 +1393,40 @@ export async function acceptKitchenNotification(
   if (!notifSnap.exists()) return;
   const notifData = notifSnap.data() as KitchenNotification;
 
-  const batch = writeBatch(db);
-  batch.update(notifRef, {
+  // 1. Update the kitchen notification status first to clear the popup immediately
+  await updateDoc(notifRef, {
     status: 'Accepted',
     acceptedAt: Date.now(),
     acceptedBy
   });
 
-  const counterName = acceptedBy === 'B1' ? 'Restaurant' : 'Fast Food';
-  notifData.items.forEach((item) => {
-    const itemRef = doc(db, 'orderItems', item.itemId);
-    batch.update(itemRef, {
-      status: 'Accepted',
-      kitchenStatus: 'Accepted',
-      acceptedAt: Date.now(),
-      acceptedBy
+  // 2. Perform secondary updates safely in try/catch to prevent blocking the UI on non-existent records
+  try {
+    const batch = writeBatch(db);
+    notifData.items.forEach((item) => {
+      const itemRef = doc(db, 'orderItems', item.itemId);
+      batch.update(itemRef, {
+        status: 'Accepted',
+        kitchenStatus: 'Accepted',
+        acceptedAt: Date.now(),
+        acceptedBy
+      });
     });
-  });
 
-  const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
-  batch.set(timelineRef, {
-    type: 'item_added',
-    message: `Accepted kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
-    actor: acceptedBy as any,
-    timestamp: Date.now()
-  });
+    if (notifData.orderId) {
+      const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
+      batch.set(timelineRef, {
+        type: 'item_added',
+        message: `Accepted kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
+        actor: acceptedBy as any,
+        timestamp: Date.now()
+      });
+    }
 
-  await batch.commit();
+    await batch.commit();
+  } catch (error) {
+    console.error('Failed to update secondary collections in acceptKitchenNotification:', error);
+  }
 }
 
 export async function completeKitchenNotification(
@@ -1435,32 +1442,40 @@ export async function completeKitchenNotification(
   if (!notifSnap.exists()) return;
   const notifData = notifSnap.data() as KitchenNotification;
 
-  const batch = writeBatch(db);
-  batch.update(notifRef, {
+  // 1. Update the kitchen notification status to Completed first
+  await updateDoc(notifRef, {
     status: 'Completed',
     completedAt: Date.now(),
     completedBy
   });
 
-  notifData.items.forEach((item) => {
-    const itemRef = doc(db, 'orderItems', item.itemId);
-    batch.update(itemRef, {
-      status: 'Completed',
-      kitchenStatus: 'Completed',
-      completedAt: Date.now(),
-      completedBy
+  // 2. Safely perform secondary updates
+  try {
+    const batch = writeBatch(db);
+    notifData.items.forEach((item) => {
+      const itemRef = doc(db, 'orderItems', item.itemId);
+      batch.update(itemRef, {
+        status: 'Completed',
+        kitchenStatus: 'Completed',
+        completedAt: Date.now(),
+        completedBy
+      });
     });
-  });
 
-  const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
-  batch.set(timelineRef, {
-    type: 'item_added',
-    message: `Completed kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
-    actor: completedBy as any,
-    timestamp: Date.now()
-  });
+    if (notifData.orderId) {
+      const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
+      batch.set(timelineRef, {
+        type: 'item_added',
+        message: `Completed kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
+        actor: completedBy as any,
+        timestamp: Date.now()
+      });
+    }
 
-  await batch.commit();
+    await batch.commit();
+  } catch (error) {
+    console.error('Failed to update secondary collections in completeKitchenNotification:', error);
+  }
 }
 
 export function subscribeToKitchenNotifications(
