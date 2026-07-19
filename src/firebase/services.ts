@@ -69,15 +69,17 @@ export interface OrderItem {
   notes: string | null;
   createdAt: number;
   served?: boolean;
-  status?: 'Pending' | 'Accepted';
+  status?: 'Pending' | 'Accepted' | 'Completed';
   kitchenNotified?: boolean;
 
   // Realtime Kitchen Send fields:
   availableAt?: string;
-  kitchenStatus?: 'Not Sent' | 'Pending' | 'Accepted';
+  kitchenStatus?: 'Not Sent' | 'Pending' | 'Accepted' | 'Completed';
   sentAt?: number;
   acceptedAt?: number;
   acceptedBy?: string;
+  completedAt?: number;
+  completedBy?: string;
 }
 
 export interface KitchenNotification {
@@ -94,11 +96,13 @@ export interface KitchenNotification {
     category: string;
     availableAt: string;
   }>;
-  status: 'Pending' | 'Accepted';
+  status: 'Pending' | 'Accepted' | 'Completed';
   createdAt: number;
   acceptedAt: number | null;
   acceptedBy: string | null;
   createdBy: string;
+  completedAt?: number | null;
+  completedBy?: string | null;
 }
 
 export interface TimelineEntry {
@@ -863,6 +867,50 @@ class MockDatabase {
     }
   }
 
+  public completeKitchenNotification(notificationId: string, completedBy: string): void {
+    this.kitchenNotifications = this.kitchenNotifications.map(n =>
+      n.id === notificationId
+        ? { ...n, status: 'Completed' as const, completedAt: Date.now(), completedBy } as any
+        : n
+    );
+    const notif = this.kitchenNotifications.find(n => n.id === notificationId);
+    if (notif) {
+      const items = this.orderItems.get(notif.orderId) || [];
+      const itemIds = new Set(notif.items.map(i => i.itemId));
+      const updated = items.map(item => {
+        if (itemIds.has(item.id)) {
+          return {
+            ...item,
+            status: 'Completed' as const,
+            kitchenStatus: 'Completed' as const,
+            completedAt: Date.now(),
+            completedBy
+          };
+        }
+        return item;
+      });
+      this.orderItems.set(notif.orderId, updated);
+
+      const now = Date.now();
+      const tlEntry: TimelineEntry = {
+        id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+        type: 'item_added',
+        message: `Completed kitchen order: ${notif.items.map(i => i.itemName).join(', ')}`,
+        actor: completedBy as any,
+        timestamp: now
+      };
+      const timeline = this.timelines.get(notif.orderId) || [];
+      timeline.push(tlEntry);
+      this.timelines.set(notif.orderId, timeline);
+
+      this.saveToStorage();
+      this.notify(`orderItems:${notif.orderId}`);
+      this.notify(`timeline:${notif.orderId}`);
+      this.notify(`kitchenNotifications:${notif.targetCounter}`);
+      this.notify(`allKitchenNotifications:${notif.targetCounter}`);
+    }
+  }
+
   public resetOrderItemKitchenStatus(orderId: string, itemId: string): void {
     const items = this.orderItems.get(orderId) || [];
     const updated = items.map(item => {
@@ -1368,6 +1416,47 @@ export async function acceptKitchenNotification(
     type: 'item_added',
     message: `Accepted kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
     actor: acceptedBy as any,
+    timestamp: Date.now()
+  });
+
+  await batch.commit();
+}
+
+export async function completeKitchenNotification(
+  notificationId: string,
+  completedBy: string
+): Promise<void> {
+  if (!isFirebaseConfigured) {
+    return mockDb.completeKitchenNotification(notificationId, completedBy);
+  }
+
+  const notifRef = doc(db, 'kitchenNotifications', notificationId);
+  const notifSnap = await getDoc(notifRef);
+  if (!notifSnap.exists()) return;
+  const notifData = notifSnap.data() as KitchenNotification;
+
+  const batch = writeBatch(db);
+  batch.update(notifRef, {
+    status: 'Completed',
+    completedAt: Date.now(),
+    completedBy
+  });
+
+  notifData.items.forEach((item) => {
+    const itemRef = doc(db, 'orderItems', item.itemId);
+    batch.update(itemRef, {
+      status: 'Completed',
+      kitchenStatus: 'Completed',
+      completedAt: Date.now(),
+      completedBy
+    });
+  });
+
+  const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
+  batch.set(timelineRef, {
+    type: 'item_added',
+    message: `Completed kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
+    actor: completedBy as any,
     timestamp: Date.now()
   });
 

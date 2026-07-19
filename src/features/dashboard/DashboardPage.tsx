@@ -5,6 +5,7 @@ import {
   subscribeToPaymentNotifications, 
   subscribeToAllKitchenNotifications,
   acceptKitchenNotification,
+  completeKitchenNotification,
   Table, 
   PaymentNotification, 
   KitchenNotification,
@@ -35,6 +36,7 @@ export const DashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'seating' | 'kitchen'>('seating');
   const [kitchenNotifications, setKitchenNotifications] = useState<KitchenNotification[]>([]);
   const [isAcceptingId, setIsAcceptingId] = useState<string | null>(null);
+  const [isCompletingId, setIsCompletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!counter) return;
@@ -55,6 +57,18 @@ export const DashboardPage: React.FC = () => {
       console.error(e);
     } finally {
       setIsAcceptingId(null);
+    }
+  };
+
+  const handleCompleteKitchenRequest = async (id: string) => {
+    if (!counter) return;
+    setIsCompletingId(id);
+    try {
+      await completeKitchenNotification(id, counter);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsCompletingId(null);
     }
   };
 
@@ -141,6 +155,15 @@ export const DashboardPage: React.FC = () => {
                   <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Preparing</span>
                   <span>Accepted by {notif.acceptedBy === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}</span>
                 </div>
+
+                <button
+                  onClick={() => handleCompleteKitchenRequest(notif.id)}
+                  disabled={isCompletingId === notif.id}
+                  className="mt-1 w-full py-2 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-350 text-slate-950 dark:text-slate-950 text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {isCompletingId === notif.id ? 'Completing...' : 'Complete Order'}
+                </button>
               </div>
             ))}
           </div>
@@ -542,19 +565,19 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                  {kitchenNotifications.filter(n => n.status === 'Accepted').length} Completed
+                  {kitchenNotifications.filter(n => n.status === 'Completed').length} Completed
                 </span>
               </div>
 
-              {kitchenNotifications.filter(n => n.status === 'Accepted').length === 0 ? (
+              {kitchenNotifications.filter(n => n.status === 'Completed').length === 0 ? (
                 <div className="text-center py-16 text-slate-400 flex flex-col items-center justify-center gap-2">
                   <ChefHat className="w-12 h-12 text-slate-300 dark:text-slate-800" />
-                  <p className="text-sm font-medium">No active kitchen orders</p>
-                  <p className="text-xs font-light">Accept orders from the left to start preparing.</p>
+                  <p className="text-sm font-medium">No completed orders yet</p>
+                  <p className="text-xs font-light">Complete orders from the seating layout tab to see them here.</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-4 py-4 max-h-[500px] overflow-y-auto pr-1">
-                  {kitchenNotifications.filter(n => n.status === 'Accepted').map((notif) => (
+                  {kitchenNotifications.filter(n => n.status === 'Completed').map((notif) => (
                     <div key={notif.id} className="p-5 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col gap-3">
                       <div className="flex justify-between items-start">
                         <div>
@@ -562,16 +585,28 @@ export const DashboardPage: React.FC = () => {
                           <span className="text-lg font-black text-slate-800 dark:text-white">Table {notif.tableNumber}</span>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs text-slate-400 block">Accepted at</span>
+                          <span className="text-xs text-slate-400 block">Completed at</span>
                           <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                            {notif.acceptedAt ? new Date(notif.acceptedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                            {notif.completedAt ? new Date(notif.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                           </span>
                         </div>
                       </div>
 
+                      <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-2">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Items</span>
+                        <ul className="space-y-1 text-sm font-semibold">
+                          {notif.items.map((item, idx) => (
+                            <li key={idx} className="flex justify-between text-slate-700 dark:text-slate-350">
+                              <span>{item.itemName}</span>
+                              <span className="text-slate-900 dark:text-white">x{item.quantity}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
                       <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 bg-emerald-500/5 px-3 py-1.5 rounded-xl border border-emerald-500/10 font-bold">
                         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Completed</span>
-                        <span>Accepted by Counter {notif.acceptedBy}</span>
+                        <span>Completed by Counter {notif.completedBy === 'B1' ? 'Restaurant' : 'Fast Food'}</span>
                       </div>
                     </div>
                   ))}
