@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  subscribeToTables, 
-  subscribeToOrder, 
-  subscribeToOrderItems, 
+import {
+  subscribeToTables,
+  subscribeToOrder,
+  subscribeToOrderItems,
   subscribeToTimeline,
   createOrder,
   addOrderItem,
@@ -24,12 +24,12 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { AddItemsDialog } from '@/features/menu/AddItemsDialog';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ArrowLeft, 
-  Clock, 
-  CreditCard, 
-  Plus, 
-  Trash2, 
+import {
+  ArrowLeft,
+  Clock,
+  CreditCard,
+  Plus,
+  Trash2,
   CheckCircle,
   AlertTriangle,
   Receipt
@@ -269,133 +269,132 @@ export const TableDetailsPage: React.FC = () => {
     const canSelectForKitchen = !item.kitchenStatus || item.kitchenStatus === 'Not Sent';
 
     return (
-    <motion.div
-      key={item.id}
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: 'auto' }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.2 }}
-      className="py-4 flex items-center justify-between gap-4"
-    >
-      <div className="flex items-center gap-3">
-        {canSelectForKitchen && (
+      <motion.div
+        key={item.id}
+        initial={{ opacity: 0, height: 0 }}
+        animate={{ opacity: 1, height: 'auto' }}
+        exit={{ opacity: 0, height: 0 }}
+        transition={{ duration: 0.2 }}
+        className="py-4 flex items-center justify-between gap-4"
+      >
+        <div className="flex items-center gap-3">
+          {canSelectForKitchen && (
+            <input
+              type="checkbox"
+              checked={selectedItemIds.has(item.id)}
+              onChange={(e) => {
+                setSelectedItemIds((prev) => {
+                  const next = new Set(prev);
+                  if (e.target.checked) {
+                    next.add(item.id);
+                  } else {
+                    next.delete(item.id);
+                  }
+                  return next;
+                });
+              }}
+              className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-indigo-500 focus:ring-indigo-400 cursor-pointer accent-indigo-500 mr-1"
+              title="Select to send to kitchen"
+            />
+          )}
           <input
             type="checkbox"
-            checked={selectedItemIds.has(item.id)}
-            onChange={(e) => {
-              setSelectedItemIds((prev) => {
-                const next = new Set(prev);
-                if (e.target.checked) {
-                  next.add(item.id);
-                } else {
-                  next.delete(item.id);
-                }
-                return next;
-              });
-            }}
-            className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-indigo-500 focus:ring-indigo-400 cursor-pointer accent-indigo-500 mr-1"
-            title="Select to send to kitchen"
+            checked={!!item.served}
+            onChange={(e) => handleToggleServed(item.id, e.target.checked)}
+            className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
+            title="Mark as served"
           />
-        )}
-        <input
-          type="checkbox"
-          checked={!!item.served}
-          onChange={(e) => handleToggleServed(item.id, e.target.checked)}
-          className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-emerald-500 focus:ring-emerald-400 cursor-pointer accent-emerald-500"
-          title="Mark as served"
-        />
-      </div>
+        </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`font-semibold text-sm transition-all ${item.served ? 'line-through text-slate-400 dark:text-slate-500 font-normal' : ''}`}>
-            {item.itemName || 'Unnamed Item'}
-          </span>
-
-          {isPending ? (
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              Pending Order
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`font-semibold text-sm transition-all ${item.served ? 'line-through text-slate-400 dark:text-slate-500 font-normal' : ''}`}>
+              {item.itemName || 'Unnamed Item'}
             </span>
-          ) : (
-            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              Order Accepted
+
+            {isPending ? (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                Pending Order
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                Order Accepted
+              </span>
+            )}
+          </div>
+          <span className={`text-xs block font-light mt-0.5 ${item.served ? 'text-slate-300 dark:text-slate-700' : 'text-slate-400'}`}>₹{item.price} each</span>
+          {item.notes && (
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 italic block mt-1 font-light bg-amber-500/5 px-2 py-0.5 rounded-lg w-max border border-amber-500/10">
+              Note: {item.notes}
             </span>
           )}
         </div>
-        <span className={`text-xs block font-light mt-0.5 ${item.served ? 'text-slate-300 dark:text-slate-700' : 'text-slate-400'}`}>₹{item.price} each</span>
-        {item.notes && (
-          <span className="text-[10px] text-amber-600 dark:text-amber-400 italic block mt-1 font-light bg-amber-500/5 px-2 py-0.5 rounded-lg w-max border border-amber-500/10">
-            Note: {item.notes}
-          </span>
-        )}
-      </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => handleUpdateQty(item.id, item.quantity - 1)}
-          className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer transition-colors"
-        >
-          {item.quantity === 1 ? <Trash2 className="w-3.5 h-3.5 text-rose-500" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold">-</span>}
-        </button>
-
-        <span className="w-6 text-center font-extrabold text-sm text-slate-800 dark:text-slate-200">
-          {item.quantity}
-        </span>
-
-        <button
-          onClick={() => handleUpdateQty(item.id, item.quantity + 1)}
-          className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer transition-colors"
-        >
-          <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold">+</span>
-        </button>
-      </div>
-
-      <div className="w-20 text-right font-extrabold text-sm text-slate-900 dark:text-white">
-        ₹{item.price * item.quantity}
-      </div>
-
-      {(!item.kitchenStatus || item.kitchenStatus === 'Not Sent' ? (
-        <button
-          type="button"
-          onClick={() => handleSendSelectedToKitchen([item])}
-          disabled={isSending}
-          className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-xs whitespace-nowrap ${
-            isSending
-              ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 cursor-not-allowed'
-              : 'border-indigo-200 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-950/30 cursor-pointer'
-          }`}>
-          {isSending ? 'Sending...' : 'Send to Kitchen'}
-        </button>
-      ) : item.kitchenStatus === 'Pending' ? (
-        <div className="flex items-center gap-1.5">
-          <span className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 shadow-xs whitespace-nowrap">
-            Pending Acceptance
-          </span>
+        <div className="flex items-center gap-3">
           <button
-            type="button"
-            onClick={() => handleResetKitchenStatus(item.id)}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
-            title="Resend / Reset Status"
+            onClick={() => handleUpdateQty(item.id, item.quantity - 1)}
+            className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer transition-colors"
           >
-            Reset
+            {item.quantity === 1 ? <Trash2 className="w-3.5 h-3.5 text-rose-500" /> : <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold">-</span>}
+          </button>
+
+          <span className="w-6 text-center font-extrabold text-sm text-slate-800 dark:text-slate-200">
+            {item.quantity}
+          </span>
+
+          <button
+            onClick={() => handleUpdateQty(item.id, item.quantity + 1)}
+            className="p-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer transition-colors"
+          >
+            <span className="w-3.5 h-3.5 flex items-center justify-center text-xs font-bold">+</span>
           </button>
         </div>
-      ) : (
-        <div className="flex items-center gap-1.5">
-          <span className="px-3 py-1.5 text-xs font-bold rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-xs whitespace-nowrap">
-            Accepted
-          </span>
+
+        <div className="w-20 text-right font-extrabold text-sm text-slate-900 dark:text-white">
+          ₹{item.price * item.quantity}
+        </div>
+
+        {(!item.kitchenStatus || item.kitchenStatus === 'Not Sent' ? (
           <button
             type="button"
-            onClick={() => handleResetKitchenStatus(item.id)}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
-            title="Resend / Reset Status"
-          >
-            Reset
+            onClick={() => handleSendSelectedToKitchen([item])}
+            disabled={isSending}
+            className={`px-3 py-1.5 text-xs font-bold rounded-xl border transition-all shadow-xs whitespace-nowrap ${isSending
+                ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 cursor-not-allowed'
+                : 'border-indigo-200 dark:border-indigo-900/30 bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-500 hover:bg-indigo-100 dark:hover:bg-indigo-950/30 cursor-pointer'
+              }`}>
+            {isSending ? 'Sending...' : 'Send to Kitchen'}
           </button>
-        </div>
-      ))}
-    </motion.div>
+        ) : item.kitchenStatus === 'Pending' ? (
+          <div className="flex items-center gap-1.5">
+            <span className="px-3 py-1.5 text-xs font-bold rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-850 text-slate-400 shadow-xs whitespace-nowrap">
+              Pending Acceptance
+            </span>
+            <button
+              type="button"
+              onClick={() => handleResetKitchenStatus(item.id)}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+              title="Resend / Reset Status"
+            >
+              Reset
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <span className="px-3 py-1.5 text-xs font-bold rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-xs whitespace-nowrap">
+              Accepted
+            </span>
+            <button
+              type="button"
+              onClick={() => handleResetKitchenStatus(item.id)}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-850 text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+              title="Resend / Reset Status"
+            >
+              Reset
+            </button>
+          </div>
+        ))}
+      </motion.div>
     );
   };
 
@@ -427,11 +426,10 @@ export const TableDetailsPage: React.FC = () => {
                     type="button"
                     onClick={() => handleSendSelectedToKitchen(eligibleItems)}
                     disabled={isAnySectionItemSending}
-                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all shadow-xs ${
-                      isAnySectionItemSending
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all shadow-xs ${isAnySectionItemSending
                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-200/50 dark:border-slate-700'
                         : 'bg-indigo-500 hover:bg-indigo-650 text-white cursor-pointer'
-                    }`}
+                      }`}
                   >
                     {isAnySectionItemSending ? 'Sending...' : 'Send All to Kitchen'}
                   </button>
@@ -457,11 +455,10 @@ export const TableDetailsPage: React.FC = () => {
                 type="button"
                 onClick={() => handleSendSelectedToKitchen(selectedInSection)}
                 disabled={isAnySelectedSending}
-                className={`px-3.5 py-1.5 rounded-xl text-white shadow-md transition-all flex items-center gap-1 ${
-                  isAnySelectedSending
+                className={`px-3.5 py-1.5 rounded-xl text-white shadow-md transition-all flex items-center gap-1 ${isAnySelectedSending
                     ? 'bg-slate-200 dark:bg-slate-850 text-slate-450 cursor-not-allowed border border-slate-300 dark:border-slate-750'
                     : 'bg-indigo-600 hover:bg-indigo-750 cursor-pointer'
-                }`}
+                  }`}
               >
                 {isAnySelectedSending ? 'Sending...' : 'Send Selected to Kitchen'}
               </button>
@@ -513,10 +510,10 @@ export const TableDetailsPage: React.FC = () => {
       ) : (
         // Active State: Order Details
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
+
           {/* Active Items Table + Summary (Left columns) */}
           <div className="lg:col-span-2 flex flex-col gap-6">
-            
+
             {/* Order Items card */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl rounded-3xl p-6 relative overflow-hidden">
               <h2 className="text-lg font-bold border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
@@ -603,7 +600,7 @@ export const TableDetailsPage: React.FC = () => {
                     <div key={entry.id} className="relative">
                       {/* Timeline dot */}
                       <span className="absolute -left-[21px] top-1.5 flex h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-700" />
-                      
+
                       <div className="flex justify-between items-center text-slate-400 font-light mb-1">
                         <span>{formatTime(entry.timestamp)}</span>
                         <span className="px-1.5 py-0.2 rounded-sm bg-slate-100 dark:bg-slate-800 text-[9px] uppercase tracking-wider">
@@ -623,7 +620,7 @@ export const TableDetailsPage: React.FC = () => {
 
           {/* Quick Actions Panel (Right column) */}
           <div className="flex flex-col gap-6">
-            
+
             {/* Table Details Sidebar Card */}
             <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl rounded-3xl p-6 relative overflow-hidden">
               <h2 className="text-base font-bold pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -647,7 +644,7 @@ export const TableDetailsPage: React.FC = () => {
                     {order?.paymentStatus || 'Unpaid'}
                   </span>
                 </div>
-                
+
                 {order?.paymentStatus === 'Paid' && (
                   <div className="p-3.5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 text-xs">
                     <span className="text-slate-400 font-light block mb-1">Payment Received:</span>
@@ -669,7 +666,7 @@ export const TableDetailsPage: React.FC = () => {
               <div className="p-4 rounded-2xl border border-amber-500/25 bg-amber-500/5 text-amber-600 dark:text-amber-400 flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div className="text-xs leading-relaxed font-light">
-                  <strong>Notice:</strong> This is an <em>{table.location} Table</em>. Payment must be collected at <strong>{isB1InsideRule ? 'Restaurant Counter' : 'Fast Food Counter'}</strong>. 
+                  <strong>Notice:</strong> This is an <em>{table.location} Table</em>. Payment must be collected at <strong>{isB1InsideRule ? 'Restaurant Counter' : 'Fast Food Counter'}</strong>.
                   You can still add items or request the bill, but payment button is locked for {counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}.
                 </div>
               </div>
@@ -690,11 +687,10 @@ export const TableDetailsPage: React.FC = () => {
                 <button
                   onClick={() => setConfirmPaymentOpen(true)}
                   disabled={!hasPaymentPermission || items.length === 0}
-                  className={`w-full py-3.5 rounded-2xl text-sm font-bold shadow-md cursor-pointer transition-all flex items-center justify-center gap-2 ${
-                    !hasPaymentPermission || items.length === 0
+                  className={`w-full py-3.5 rounded-2xl text-sm font-bold shadow-md cursor-pointer transition-all flex items-center justify-center gap-2 ${!hasPaymentPermission || items.length === 0
                       ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200/50 dark:border-slate-850 cursor-not-allowed shadow-none'
                       : 'bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-350 text-white'
-                  }`}
+                    }`}
                   title={!hasPaymentPermission ? `Payment must be collected by ${isB1InsideRule ? 'Restaurant Counter' : 'Fast Food Counter'}` : 'Record Payment'}
                 >
                   <CreditCard className="w-4 h-4" /> Collect Payment (₹{order.total})
@@ -727,7 +723,7 @@ export const TableDetailsPage: React.FC = () => {
               onClick={() => setConfirmPaymentOpen(false)}
               className="fixed inset-0 bg-black/60 backdrop-blur-xs"
             />
-            
+
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -742,7 +738,7 @@ export const TableDetailsPage: React.FC = () => {
               </div>
 
               <p className="text-slate-500 dark:text-slate-400 text-sm font-light leading-relaxed mb-6">
-                Are you sure you want to mark Table {table.number} as paid? 
+                Are you sure you want to mark Table {table.number} as paid?
                 This will log payment collected by <strong>{counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}</strong> and notify the other counter instantly.
               </p>
 

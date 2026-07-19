@@ -147,7 +147,12 @@ export interface OrderNotification {
 
 export const KITCHEN_TO_COUNTER: Record<string, string> = {
   'Restaurant': 'B1',
-  'Fast Food': 'B2'
+  'Fast Food': 'B2',
+  'Franchise Kitchen': 'B1',
+  'Fast Food Kitchen': 'B2',
+  'Franchise': 'B1',
+  'B1': 'B1',
+  'B2': 'B2'
 };
 
 // ----------------------------------------------------
@@ -1155,7 +1160,8 @@ export function subscribeToPaymentNotifications(
   });
 }
 
-export function getCounterForKitchen(kitchen: string): string {
+export function getCounterForKitchen(kitchen: string | undefined | null): string {
+  if (!kitchen) return 'B1';
   return KITCHEN_TO_COUNTER[kitchen] || kitchen;
 }
 
