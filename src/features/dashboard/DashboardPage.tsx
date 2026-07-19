@@ -82,6 +82,73 @@ export const DashboardPage: React.FC = () => {
   const insideTables = tables.filter((t) => t.location === 'Inside');
   const outsideTables = tables.filter((t) => t.location === 'Outside');
 
+  const renderPreparingOrders = () => {
+    const acceptedNotifs = kitchenNotifications.filter(n => n.status === 'Accepted');
+    const counterLabel = counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter';
+    return (
+      <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
+              <ChefHat className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">👨‍🍳 Preparing Orders</h2>
+              <p className="text-xs text-slate-400 font-light">Tickets accepted and in preparation at {counterLabel}</p>
+            </div>
+          </div>
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+            {acceptedNotifs.length} Preparing
+          </span>
+        </div>
+
+        {acceptedNotifs.length === 0 ? (
+          <div className="text-center py-16 text-slate-400 flex flex-col items-center justify-center gap-2">
+            <ChefHat className="w-12 h-12 text-slate-300 dark:text-slate-800 animate-pulse" />
+            <p className="text-sm font-medium">No active kitchen orders</p>
+            <p className="text-xs font-light">Go to the "Kitchen Requests" tab to accept pending tickets.</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 py-4 max-h-[350px] overflow-y-auto pr-1">
+            {acceptedNotifs.map((notif) => (
+              <div key={notif.id} className="p-5 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col gap-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-xs text-slate-400 block">Table</span>
+                    <span className="text-lg font-black text-slate-800 dark:text-white">Table {notif.tableNumber}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-slate-400 block">Accepted at</span>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                      {notif.acceptedAt ? new Date(notif.acceptedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-2">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Items</span>
+                  <ul className="space-y-1 text-sm font-semibold">
+                    {notif.items.map((item, idx) => (
+                      <li key={idx} className="flex justify-between text-slate-700 dark:text-slate-350">
+                        <span>{item.itemName}</span>
+                        <span className="text-slate-900 dark:text-white">x{item.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 bg-emerald-500/5 px-3 py-1.5 rounded-xl border border-emerald-500/10 font-bold">
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Preparing</span>
+                  <span>Accepted by {notif.acceptedBy === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Stats calculation
   const totalTables = tables.length;
   const occupiedCount = tables.filter((t) => t.status === 'Occupied' || t.status === 'Payment Pending').length;
@@ -289,45 +356,36 @@ export const DashboardPage: React.FC = () => {
           {/* Seating Layout Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            {/* Inside Seating Section (B1 Primary Area) */}
-            <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
-              {/* Subtle glow if active area */}
-              {counter === 'B1' && (
+            {/* Column 1: Restaurant Dining if B1, else Preparing Orders */}
+            {counter === 'B1' ? (
+              /* Inside Seating Section (B1 Primary Area) */
+              <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
+                {/* Subtle glow if active area */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
-              )}
-              
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
-                    <Store className="w-5 h-5" />
+                
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
+                      <Store className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">🍽️ Restaurant Dining</h2>
+                      <p className="text-xs text-slate-400 font-light">Main Hall &bull; Managed by Restaurant Counter</p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold">🍽️ Restaurant Dining</h2>
-                    <p className="text-xs text-slate-400 font-light">Main Hall &bull; Managed by Restaurant Counter</p>
-                  </div>
-                </div>
-                {counter === 'B1' && (
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                     Primary
                   </span>
-                )}
-              </div>
+                </div>
 
-              <div className="grid grid-cols-3 gap-4 py-4">
-                {insideTables.map((table) => {
-                  const isDisabled = counter === 'B2';
-                  return (
+                <div className="grid grid-cols-3 gap-4 py-4">
+                  {insideTables.map((table) => (
                     <motion.button
                       key={table.id}
-                      disabled={isDisabled}
-                      whileHover={isDisabled ? {} : { scale: 1.03 }}
-                      whileTap={isDisabled ? {} : { scale: 0.98 }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleTableClick(table.id)}
-                      className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 ${
-                        isDisabled 
-                          ? 'opacity-40 cursor-not-allowed grayscale pointer-events-none' 
-                          : 'cursor-pointer card-hover'
-                      } ${getStatusColor(table.status)}`}
+                      className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 cursor-pointer card-hover ${getStatusColor(table.status)}`}
                     >
                       <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
                       <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
@@ -342,50 +400,45 @@ export const DashboardPage: React.FC = () => {
                         </div>
                       )}
                     </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Outside Seating Section (B2 Primary Area) */}
-            <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
-              {/* Subtle glow if active area */}
-              {counter === 'B2' && (
-                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
-              )}
-
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl">
-                    <Trees className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold">🍔 Fast Food Dining</h2>
-                    <p className="text-xs text-slate-400 font-light">Open Air &bull; Managed by Fast Food Counter</p>
-                  </div>
+                  ))}
                 </div>
-                {counter === 'B2' && (
+              </div>
+            ) : (
+              renderPreparingOrders()
+            )}
+
+            {/* Column 2: Preparing Orders if B1, else Fast Food Dining */}
+            {counter === 'B1' ? (
+              renderPreparingOrders()
+            ) : (
+              /* Outside Seating Section (B2 Primary Area) */
+              <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
+                {/* Subtle glow if active area */}
+                <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
+
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl">
+                      <Trees className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">🍔 Fast Food Dining</h2>
+                      <p className="text-xs text-slate-400 font-light">Open Air &bull; Managed by Fast Food Counter</p>
+                    </div>
+                  </div>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
                     Primary
                   </span>
-                )}
-              </div>
+                </div>
 
-              <div className="grid grid-cols-2 gap-4 py-4">
-                {outsideTables.map((table) => {
-                  const isDisabled = counter === 'B1';
-                  return (
+                <div className="grid grid-cols-2 gap-4 py-4">
+                  {outsideTables.map((table) => (
                     <motion.button
                       key={table.id}
-                      disabled={isDisabled}
-                      whileHover={isDisabled ? {} : { scale: 1.03 }}
-                      whileTap={isDisabled ? {} : { scale: 0.98 }}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => handleTableClick(table.id)}
-                      className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 ${
-                        isDisabled 
-                          ? 'opacity-40 cursor-not-allowed grayscale pointer-events-none' 
-                          : 'cursor-pointer card-hover'
-                      } ${getStatusColor(table.status)}`}
+                      className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 cursor-pointer card-hover ${getStatusColor(table.status)}`}
                     >
                       <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
                       <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
@@ -400,10 +453,10 @@ export const DashboardPage: React.FC = () => {
                         </div>
                       )}
                     </motion.button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
 
