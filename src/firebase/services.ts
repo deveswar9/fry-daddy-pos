@@ -105,13 +105,6 @@ export interface KitchenNotification {
   completedBy?: string | null;
 }
 
-export interface TimelineEntry {
-  id: string;
-  type: 'order_created' | 'item_added' | 'item_removed' | 'payment_pending' | 'payment_received' | 'table_closed';
-  message: string;
-  actor: 'B1' | 'B2' | 'System';
-  timestamp: number;
-}
 
 export interface PaymentNotification {
   id: string;
@@ -210,7 +203,6 @@ class MockDatabase {
   private menu: MenuItem[] = [];
   private orders: Map<string, Order> = new Map();
   private orderItems: Map<string, OrderItem[]> = new Map(); // orderId -> items
-  private timelines: Map<string, TimelineEntry[]> = new Map(); // orderId -> entries
   private paymentNotifications: PaymentNotification[] = [];
   private orderNotifications: OrderNotification[] = [];
   private kitchenNotifications: KitchenNotification[] = [];
@@ -232,7 +224,6 @@ class MockDatabase {
       const storedMenu = localStorage.getItem('r_menu');
       const storedOrders = localStorage.getItem('r_orders');
       const storedItems = localStorage.getItem('r_items');
-      const storedTimelines = localStorage.getItem('r_timelines');
       const storedPaymentNotifications = localStorage.getItem('r_payment_notifications');
       const storedOrderNotifications = localStorage.getItem('r_order_notifications');
       const storedKitchenNotifications = localStorage.getItem('r_kitchen_notifications');
@@ -277,10 +268,6 @@ class MockDatabase {
         });
         this.orderItems = new Map(Object.entries(migratedItems));
       }
-      if (storedTimelines) {
-        const parsedTimelines = JSON.parse(storedTimelines);
-        this.timelines = new Map(Object.entries(parsedTimelines));
-      }
       if (storedPaymentNotifications) {
         this.paymentNotifications = JSON.parse(storedPaymentNotifications);
       } else {
@@ -311,7 +298,6 @@ class MockDatabase {
     localStorage.setItem('r_menu', JSON.stringify(this.menu));
     localStorage.setItem('r_orders', JSON.stringify(Object.fromEntries(this.orders)));
     localStorage.setItem('r_items', JSON.stringify(Object.fromEntries(this.orderItems)));
-    localStorage.setItem('r_timelines', JSON.stringify(Object.fromEntries(this.timelines)));
     localStorage.setItem('r_payment_notifications', JSON.stringify(this.paymentNotifications));
     localStorage.setItem('r_order_notifications', JSON.stringify(this.orderNotifications));
     localStorage.setItem('r_kitchen_notifications', JSON.stringify(this.kitchenNotifications));
@@ -375,10 +361,6 @@ class MockDatabase {
       const orderId = key.split(':')[1];
       return [...(this.orderItems.get(orderId) || [])].sort((a, b) => b.createdAt - a.createdAt);
     }
-    if (key.startsWith('timeline:')) {
-      const orderId = key.split(':')[1];
-      return [...(this.timelines.get(orderId) || [])].sort((a, b) => a.timestamp - b.timestamp);
-    }
     if (key.startsWith('order:')) {
       const orderId = key.split(':')[1];
       return this.orders.get(orderId) || null;
@@ -423,19 +405,8 @@ class MockDatabase {
 
     this.orders.set(orderId, order);
     this.updateTable(tableId, { status: 'Occupied', currentOrderId: orderId });
-    
-    // Create first timeline entry
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: 'order_created',
-      message: `Table opened (Counter ${actor})`,
-      actor,
-      timestamp: now
-    };
-    this.timelines.set(orderId, [tlEntry]);
 
     this.notify(`order:${orderId}`);
-    this.notify(`timeline:${orderId}`);
     return orderId;
   }
 
@@ -484,18 +455,6 @@ class MockDatabase {
     order.updatedAt = now;
     this.orders.set(orderId, order);
 
-    // Timeline entry
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: 'item_added',
-      message: `Added ${quantity}x ${menuItem.name} ${notes ? `(${notes})` : ''}`,
-      actor,
-      timestamp: now
-    };
-    const timeline = this.timelines.get(orderId) || [];
-    timeline.push(tlEntry);
-    this.timelines.set(orderId, timeline);
-
     // If order was Paid or Cleaning, set back to Occupied on new order addition
     const table = this.tables.find(t => t.currentOrderId === orderId);
     if (table && (table.status === 'Paid' || table.status === 'Cleaning' || table.status === 'Payment Pending')) {
@@ -504,7 +463,6 @@ class MockDatabase {
 
     this.notify(`order:${orderId}`);
     this.notify(`orderItems:${orderId}`);
-    this.notify(`timeline:${orderId}`);
   }
 
   public updateOrderItemQuantity(orderId: string, itemId: string, quantity: number, actor: 'B1' | 'B2') {
@@ -517,7 +475,6 @@ class MockDatabase {
       throw new Error('Menu item needs price verification before ordering');
     }
 
-    const oldQuantity = item.quantity;
     if (quantity <= 0) {
       // Remove item
       this.orderItems.set(orderId, items.filter(i => i.id !== itemId));
@@ -533,22 +490,8 @@ class MockDatabase {
     order.updatedAt = now;
     this.orders.set(orderId, order);
 
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: quantity <= 0 ? 'item_removed' : 'item_added',
-      message: quantity <= 0 
-        ? `Removed ${item.itemName}` 
-        : `Updated ${item.itemName} quantity: ${oldQuantity} → ${quantity}`,
-      actor,
-      timestamp: now
-    };
-    const timeline = this.timelines.get(orderId) || [];
-    timeline.push(tlEntry);
-    this.timelines.set(orderId, timeline);
-
     this.notify(`order:${orderId}`);
     this.notify(`orderItems:${orderId}`);
-    this.notify(`timeline:${orderId}`);
   }
 
   public updateOrderItemServedStatus(orderId: string, itemId: string, served: boolean, actor: 'B1' | 'B2') {
@@ -559,21 +502,8 @@ class MockDatabase {
     item.served = served;
     this.orderItems.set(orderId, items);
 
-    const now = Date.now();
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: 'item_added',
-      message: `${served ? 'Served' : 'Unserved'} ${item.quantity}x ${item.itemName}`,
-      actor,
-      timestamp: now
-    };
-    const timeline = this.timelines.get(orderId) || [];
-    timeline.push(tlEntry);
-    this.timelines.set(orderId, timeline);
-
     this.saveToStorage();
     this.notify(`orderItems:${orderId}`);
-    this.notify(`timeline:${orderId}`);
   }
 
   public markOrderPaymentPending(orderId: string, actor: 'B1' | 'B2') {
@@ -586,19 +516,7 @@ class MockDatabase {
 
     this.updateTable(order.tableId, { status: 'Payment Pending' });
 
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: 'payment_pending',
-      message: `Requested bill / Payment Pending`,
-      actor,
-      timestamp: Date.now()
-    };
-    const timeline = this.timelines.get(orderId) || [];
-    timeline.push(tlEntry);
-    this.timelines.set(orderId, timeline);
-
     this.notify(`order:${orderId}`);
-    this.notify(`timeline:${orderId}`);
   }
 
   public collectPayment(orderId: string, collectedBy: 'B1' | 'B2') {
@@ -617,17 +535,6 @@ class MockDatabase {
       lastPaymentCollectedBy: collectedBy,
       lastPaymentTimestamp: now
     });
-
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: 'payment_received',
-      message: `Payment collected by ${collectedBy}`,
-      actor: collectedBy,
-      timestamp: now
-    };
-    const timeline = this.timelines.get(orderId) || [];
-    timeline.push(tlEntry);
-    this.timelines.set(orderId, timeline);
 
     const itemsList = this.orderItems.get(orderId) || [];
     const tableObj = this.getTable(order.tableId);
@@ -682,7 +589,6 @@ class MockDatabase {
     });
 
     this.notify(`order:${orderId}`);
-    this.notify(`timeline:${orderId}`);
   }
 
   public closeTable(orderId: string, actor: 'B1' | 'B2') {
@@ -776,21 +682,8 @@ class MockDatabase {
       });
       this.orderItems.set(notif.orderId, updatedItems);
 
-      const now = Date.now();
-      const tlEntry: TimelineEntry = {
-        id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-        type: 'item_added',
-        message: `Accepted ${notif.targetCounter === 'B1' ? 'Restaurant' : 'Fast Food'} items`,
-        actor: notif.targetCounter as 'B1' | 'B2',
-        timestamp: now
-      };
-      const timeline = this.timelines.get(notif.orderId) || [];
-      timeline.push(tlEntry);
-      this.timelines.set(notif.orderId, timeline);
-
       this.saveToStorage();
       this.notify(`orderItems:${notif.orderId}`);
-      this.notify(`timeline:${notif.orderId}`);
       this.notify(`orderNotifications:${notif.targetCounter}`);
     }
   }
@@ -847,21 +740,8 @@ class MockDatabase {
       });
       this.orderItems.set(notif.orderId, updated);
 
-      const now = Date.now();
-      const tlEntry: TimelineEntry = {
-        id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-        type: 'item_added',
-        message: `Accepted kitchen order: ${notif.items.map(i => i.itemName).join(', ')}`,
-        actor: acceptedBy as any,
-        timestamp: now
-      };
-      const timeline = this.timelines.get(notif.orderId) || [];
-      timeline.push(tlEntry);
-      this.timelines.set(notif.orderId, timeline);
-
       this.saveToStorage();
       this.notify(`orderItems:${notif.orderId}`);
-      this.notify(`timeline:${notif.orderId}`);
       this.notify(`kitchenNotifications:${notif.targetCounter}`);
       this.notify(`allKitchenNotifications:${notif.targetCounter}`);
     }
@@ -891,21 +771,8 @@ class MockDatabase {
       });
       this.orderItems.set(notif.orderId, updated);
 
-      const now = Date.now();
-      const tlEntry: TimelineEntry = {
-        id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-        type: 'item_added',
-        message: `Completed kitchen order: ${notif.items.map(i => i.itemName).join(', ')}`,
-        actor: completedBy as any,
-        timestamp: now
-      };
-      const timeline = this.timelines.get(notif.orderId) || [];
-      timeline.push(tlEntry);
-      this.timelines.set(notif.orderId, timeline);
-
       this.saveToStorage();
       this.notify(`orderItems:${notif.orderId}`);
-      this.notify(`timeline:${notif.orderId}`);
       this.notify(`kitchenNotifications:${notif.targetCounter}`);
       this.notify(`allKitchenNotifications:${notif.targetCounter}`);
     }
@@ -949,21 +816,8 @@ class MockDatabase {
     });
     this.orderItems.set(orderId, updated);
 
-    const now = Date.now();
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: 'item_added',
-      message: `Accepted local kitchen order: ${item.itemName}`,
-      actor: actor as any,
-      timestamp: now
-    };
-    const timeline = this.timelines.get(orderId) || [];
-    timeline.push(tlEntry);
-    this.timelines.set(orderId, timeline);
-
     this.saveToStorage();
     this.notify(`orderItems:${orderId}`);
-    this.notify(`timeline:${orderId}`);
   }
 
   public markOrderItemKitchenNotified(orderId: string, itemId: string, actor: 'B1' | 'B2') {
@@ -974,21 +828,8 @@ class MockDatabase {
     item.kitchenNotified = true;
     this.orderItems.set(orderId, items);
 
-    const now = Date.now();
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: 'item_added',
-      message: `Sent ${item.itemName} to kitchen`,
-      actor,
-      timestamp: now
-    };
-    const timeline = this.timelines.get(orderId) || [];
-    timeline.push(tlEntry);
-    this.timelines.set(orderId, timeline);
-
     this.saveToStorage();
     this.notify(`orderItems:${orderId}`);
-    this.notify(`timeline:${orderId}`);
   }
 
   public acceptSingleOrderItem(orderId: string, itemId: string, actor: 'B1' | 'B2') {
@@ -1000,21 +841,8 @@ class MockDatabase {
     item.kitchenStatus = 'Accepted';
     this.orderItems.set(orderId, items);
 
-    const now = Date.now();
-    const tlEntry: TimelineEntry = {
-      id: 'TL_' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-      type: 'item_added',
-      message: `Accepted ${item.itemName}`,
-      actor,
-      timestamp: now
-    };
-    const timeline = this.timelines.get(orderId) || [];
-    timeline.push(tlEntry);
-    this.timelines.set(orderId, timeline);
-
     this.saveToStorage();
     this.notify(`orderItems:${orderId}`);
-    this.notify(`timeline:${orderId}`);
   }
 
   public getAllOrders(): Order[] {
@@ -1260,14 +1088,6 @@ export async function acceptOrderNotification(
     acceptedAt: Date.now(),
     acceptedBy: acceptedBy
   });
-
-  const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
-  await setDoc(timelineRef, {
-    type: 'item_added',
-    message: `Accepted ${notifData.targetCounter === 'B1' ? 'Restaurant' : 'Fast Food'} items`,
-    actor: notifData.targetCounter as 'B1' | 'B2',
-    timestamp: Date.now()
-  });
 }
 
 export async function markOrderItemKitchenNotified(
@@ -1280,19 +1100,7 @@ export async function markOrderItemKitchenNotified(
   }
 
   const itemRef = doc(db, 'orderItems', itemId);
-  const itemSnap = await getDoc(itemRef);
-  const itemName = itemSnap.exists() ? (itemSnap.data()?.itemName || 'Item') : 'Item';
-
   await updateDoc(itemRef, { kitchenNotified: true });
-
-  const now = Date.now();
-  const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
-  await setDoc(timelineRef, {
-    type: 'item_added',
-    message: `Sent ${itemName} to kitchen`, 
-    actor,
-    timestamp: now
-  });
 }
 
 export async function acceptSingleOrderItem(
@@ -1306,26 +1114,6 @@ export async function acceptSingleOrderItem(
 
   const itemRef = doc(db, 'orderItems', itemId);
   await updateDoc(itemRef, { status: 'Accepted', kitchenStatus: 'Accepted' });
-
-  const now = Date.now();
-  const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
-  try {
-    const itemSnap = await getDoc(itemRef);
-    const itemName = itemSnap.exists() ? (itemSnap.data()?.itemName || 'Item') : 'Item';
-    await setDoc(timelineRef, {
-      type: 'item_added',
-      message: `Accepted ${itemName}`,
-      actor,
-      timestamp: now
-    });
-  } catch (err) {
-    await setDoc(timelineRef, {
-      type: 'item_added',
-      message: `Accepted item`,
-      actor,
-      timestamp: now
-    });
-  }
 }
 
 export function subscribeToOrderNotifications(
@@ -1414,13 +1202,6 @@ export async function acceptKitchenNotification(
     });
 
     if (notifData.orderId) {
-      const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
-      batch.set(timelineRef, {
-        type: 'item_added',
-        message: `Accepted kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
-        actor: acceptedBy as any,
-        timestamp: Date.now()
-      });
     }
 
     await batch.commit();
@@ -1461,16 +1242,6 @@ export async function completeKitchenNotification(
         completedBy
       });
     });
-
-    if (notifData.orderId) {
-      const timelineRef = doc(collection(db, 'orders', notifData.orderId, 'timeline'));
-      batch.set(timelineRef, {
-        type: 'item_added',
-        message: `Completed kitchen order: ${notifData.items.map(i => i.itemName).join(', ')}`,
-        actor: completedBy as any,
-        timestamp: Date.now()
-      });
-    }
 
     await batch.commit();
   } catch (error) {
@@ -1567,32 +1338,6 @@ export async function markOrderItemKitchenAcceptedImmediately(
     acceptedBy: actor
   });
 
-  const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
-  await setDoc(timelineRef, {
-    type: 'item_added',
-    message: `Accepted local kitchen order: ${itemName}`,
-    actor,
-    timestamp: Date.now()
-  });
-}
-
-export function subscribeToTimeline(orderId: string, callback: (entries: TimelineEntry[]) => void) {
-  if (!isFirebaseConfigured) {
-    return mockDb.subscribe(`timeline:${orderId}`, callback);
-  }
-
-  const q = query(
-    collection(db, 'orders', orderId, 'timeline'),
-    orderBy('timestamp', 'asc')
-  );
-
-  return onSnapshot(q, (snapshot) => {
-    const entries: TimelineEntry[] = [];
-    snapshot.forEach((doc) => {
-      entries.push({ id: doc.id, ...doc.data() } as TimelineEntry);
-    });
-    callback(entries);
-  });
 }
 
 // ----------------------------------------------------
@@ -1620,22 +1365,10 @@ export async function createOrder(tableId: string, actor: 'B1' | 'B2'): Promise<
     updatedAt: now
   };
 
-  const timelineRef = doc(collection(db, 'orders', orderId, 'timeline'));
-
-  const newTimelineEntry = {
-    type: 'order_created',
-    message: `Table opened (Counter ${actor})`,
-    actor,
-    timestamp: now
-  };
-
   await runTransaction(db, async (transaction) => {
     // 1. Create order
     transaction.set(orderRef, newOrder);
     
-    // 2. Set first timeline log
-    transaction.set(timelineRef, newTimelineEntry);
-
     // 3. Update Table state
     const tableRef = doc(db, 'tables', tableId);
     transaction.update(tableRef, {
@@ -1727,15 +1460,6 @@ export async function addOrderItem(
       updatedAt: now
     });
 
-    // Write timeline entry
-    const tlRef = doc(collection(db, 'orders', orderId, 'timeline'));
-    transaction.set(tlRef, {
-      type: 'item_added',
-      message: `Added ${quantity}x ${menuItem.name} ${notes ? `(${notes})` : ''}`,
-      actor,
-      timestamp: now
-    });
-
     // Update table status if it was Payment Pending or Cleaning
     const tableRef = doc(db, 'tables', orderData.tableId);
     transaction.update(tableRef, {
@@ -1789,16 +1513,6 @@ export async function updateOrderItemQuantity(
       total: finalSubtotal,
       updatedAt: now
     });
-
-    const tlRef = doc(collection(db, 'orders', orderId, 'timeline'));
-    transaction.set(tlRef, {
-      type: quantity <= 0 ? 'item_removed' : 'item_added',
-      message: quantity <= 0 
-        ? `Removed ${itemData.itemName}` 
-        : `Updated ${itemData.itemName} quantity: ${oldQuantity} → ${quantity}`,
-      actor,
-      timestamp: now
-    });
   });
 }
 
@@ -1821,16 +1535,7 @@ export async function updateOrderItemServedStatus(
       throw new Error('Item does not exist');
     }
 
-    const itemData = itemDoc.data() as OrderItem;
     transaction.update(itemRef, { served });
-
-    const tlRef = doc(collection(db, 'orders', orderId, 'timeline'));
-    transaction.set(tlRef, {
-      type: 'item_added',
-      message: `${served ? 'Served' : 'Unserved'} ${itemData.quantity}x ${itemData.itemName}`,
-      actor,
-      timestamp: now
-    });
   });
 }
 
@@ -1855,14 +1560,6 @@ export async function markOrderPaymentPending(orderId: string, actor: 'B1' | 'B2
     const tableRef = doc(db, 'tables', orderData.tableId);
     transaction.update(tableRef, {
       status: 'Payment Pending'
-    });
-
-    const tlRef = doc(collection(db, 'orders', orderId, 'timeline'));
-    transaction.set(tlRef, {
-      type: 'payment_pending',
-      message: `Requested bill / Payment Pending`,
-      actor,
-      timestamp: now
     });
   });
 }
@@ -1901,9 +1598,6 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
 
   const now = Date.now();
 
-  // Step 2: Run a transaction to update the order, table, and add a timeline entry
-  const tlRef = doc(collection(db, 'orders', orderId, 'timeline'));
-
   await runTransaction(db, async (transaction) => {
     const orderDoc = await transaction.get(orderRef);
     if (!orderDoc.exists()) {
@@ -1927,13 +1621,6 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
       status: 'Paid',
       lastPaymentCollectedBy: collectedBy,
       lastPaymentTimestamp: now
-    });
-
-    transaction.set(tlRef, {
-      type: 'payment_received',
-      message: `Payment collected by ${collectedBy}`,
-      actor: collectedBy,
-      timestamp: now
     });
   });
 

@@ -314,7 +314,7 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
                 />
                 
                 <p className="text-[10px] text-slate-400 font-light">
-                  Press outside this area or select another item to finalize notes. Notes are printed in timeline logs.
+                  Press outside this area or select another item to finalize notes. Notes are saved with the item.
                 </p>
               </div>
             ) : (

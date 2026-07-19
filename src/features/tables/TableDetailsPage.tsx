@@ -4,7 +4,6 @@ import {
   subscribeToTables,
   subscribeToOrder,
   subscribeToOrderItems,
-  subscribeToTimeline,
   createOrder,
   addOrderItem,
   updateOrderItemQuantity,
@@ -18,7 +17,6 @@ import {
   Table,
   Order,
   OrderItem,
-  TimelineEntry,
   MenuItem
 } from '@/firebase/services';
 import { useAuth } from '@/context/AuthContext';
@@ -43,7 +41,6 @@ export const TableDetailsPage: React.FC = () => {
   const [table, setTable] = useState<Table | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
-  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sendingItemIds, setSendingItemIds] = useState<Set<string>>(() => new Set());
@@ -75,19 +72,16 @@ export const TableDetailsPage: React.FC = () => {
     if (!table || !table.currentOrderId) {
       setOrder(null);
       setItems([]);
-      setTimeline([]);
       return;
     }
 
     const orderId = table.currentOrderId;
     const unsubOrder = subscribeToOrder(orderId, (o) => setOrder(o));
     const unsubItems = subscribeToOrderItems(orderId, (i) => setItems(i));
-    const unsubTimeline = subscribeToTimeline(orderId, (t) => setTimeline(t));
 
     return () => {
       unsubOrder();
       unsubItems();
-      unsubTimeline();
     };
   }, [table]);
 
@@ -584,36 +578,6 @@ export const TableDetailsPage: React.FC = () => {
                   ₹{order?.total || 0}
                 </span>
               </div>
-            </div>
-
-            {/* Realtime Order Timeline Log */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl rounded-3xl p-6 relative overflow-hidden">
-              <h2 className="text-lg font-bold pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-slate-400" /> Order History Timeline
-              </h2>
-
-              {timeline.length === 0 ? (
-                <p className="text-sm text-slate-400 py-4 font-light">No logged timeline operations.</p>
-              ) : (
-                <div className="relative border-l-2 border-slate-100 dark:border-slate-800 pl-4 ml-2 mt-4 space-y-4 py-2 text-xs font-medium">
-                  {timeline.map((entry) => (
-                    <div key={entry.id} className="relative">
-                      {/* Timeline dot */}
-                      <span className="absolute -left-[21px] top-1.5 flex h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-700" />
-
-                      <div className="flex justify-between items-center text-slate-400 font-light mb-1">
-                        <span>{formatTime(entry.timestamp)}</span>
-                        <span className="px-1.5 py-0.2 rounded-sm bg-slate-100 dark:bg-slate-800 text-[9px] uppercase tracking-wider">
-                          actor: {entry.actor}
-                        </span>
-                      </div>
-                      <p className="text-slate-800 dark:text-slate-200 font-medium text-sm">
-                        {entry.message}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
 
           </div>
