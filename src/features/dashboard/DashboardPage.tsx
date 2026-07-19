@@ -93,12 +93,12 @@ export const DashboardPage: React.FC = () => {
               <ChefHat className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">👨‍🍳 Completed Orders</h2>
-              <p className="text-xs text-slate-400 font-light">Tickets accepted and completed at {counterLabel}</p>
+              <h2 className="text-xl font-bold">👨‍🍳 Preparing Orders</h2>
+              <p className="text-xs text-slate-400 font-light">Tickets accepted and in preparation at {counterLabel}</p>
             </div>
           </div>
           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-            {acceptedNotifs.length} Completed
+            {acceptedNotifs.length} Preparing
           </span>
         </div>
 
@@ -125,8 +125,20 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
 
+                <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-2">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Items</span>
+                  <ul className="space-y-1 text-sm font-semibold">
+                    {notif.items.map((item, idx) => (
+                      <li key={idx} className="flex justify-between text-slate-700 dark:text-slate-350">
+                        <span>{item.itemName}</span>
+                        <span className="text-slate-900 dark:text-white">x{item.quantity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
                 <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 bg-emerald-500/5 px-3 py-1.5 rounded-xl border border-emerald-500/10 font-bold">
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Completed</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Preparing</span>
                   <span>Accepted by {notif.acceptedBy === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}</span>
                 </div>
               </div>
