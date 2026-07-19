@@ -3,7 +3,6 @@ import { getReportsData, Order, OrderItem } from '@/firebase/services';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, 
-  TrendingUp, 
   DollarSign, 
   Clock, 
   ShoppingBag, 
@@ -79,8 +78,8 @@ export const ReportsPage: React.FC = () => {
     return (
       <div className="flex flex-col gap-6 py-6 animate-pulse">
         <div className="h-10 w-48 bg-slate-200 dark:bg-slate-900 rounded-xl" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
             <div key={i} className="h-28 bg-slate-200 dark:bg-slate-900 rounded-3xl" />
           ))}
         </div>
@@ -101,9 +100,6 @@ export const ReportsPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight">Reports & Analytics</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-light">
-            Realtime performance metrics, item sales, and counter splits.
-          </p>
         </div>
 
         <button
@@ -116,7 +112,7 @@ export const ReportsPage: React.FC = () => {
       </div>
 
       {/* KPI summaries */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
         
         {/* Sales Revenue */}
         <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xs flex items-center justify-between">
@@ -139,18 +135,6 @@ export const ReportsPage: React.FC = () => {
           </div>
           <div className="p-3 bg-rose-500/10 text-rose-500 rounded-2xl">
             <Clock className="w-6 h-6" />
-          </div>
-        </div>
-
-        {/* Avg Ticket Size */}
-        <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Avg Ticket Size</span>
-            <h3 className="text-3xl font-extrabold mt-1">₹{Math.round(avgOrderVal)}</h3>
-            <p className="text-[10px] text-slate-400 font-light mt-1">Value per customer checkout</p>
-          </div>
-          <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-2xl">
-            <TrendingUp className="w-6 h-6" />
           </div>
         </div>
 

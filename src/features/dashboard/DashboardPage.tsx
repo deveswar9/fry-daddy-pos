@@ -231,10 +231,7 @@ export const DashboardPage: React.FC = () => {
       {/* Welcome Title */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Seating Dashboard</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm font-light">
-            Realtime dining layout. Select tables to manage bills and add items.
-          </p>
+          <h1 className="text-3xl font-extrabold tracking-tight">Dashboard</h1>
         </div>
         
         {/* Quick status guide */}
@@ -242,8 +239,6 @@ export const DashboardPage: React.FC = () => {
           <span className="flex items-center gap-1.5 px-2 py-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Available</span>
           <span className="flex items-center gap-1.5 px-2 py-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Occupied</span>
           <span className="flex items-center gap-1.5 px-2 py-1"><span className="w-2 h-2 rounded-full bg-rose-500" /> Pending Bill</span>
-          <span className="flex items-center gap-1.5 px-2 py-1"><span className="w-2 h-2 rounded-full bg-indigo-500" /> Paid</span>
-          <span className="flex items-center gap-1.5 px-2 py-1"><span className="w-2 h-2 rounded-full bg-slate-400" /> Cleaning</span>
         </div>
       </div>
 
