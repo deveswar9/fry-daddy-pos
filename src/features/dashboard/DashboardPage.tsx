@@ -103,7 +103,7 @@ export const DashboardPage: React.FC = () => {
     const acceptedNotifs = kitchenNotifications.filter(n => n.status === 'Accepted');
     const counterLabel = counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter';
     return (
-      <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
+      <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden h-full flex-1">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
@@ -120,24 +120,36 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {acceptedNotifs.length === 0 ? (
-          <div className="text-center py-16 text-slate-400 flex flex-col items-center justify-center gap-2">
+          <div className="text-center py-16 text-slate-400 flex flex-col items-center justify-center gap-2 flex-1">
             <ChefHat className="w-12 h-12 text-slate-300 dark:text-slate-800 animate-pulse" />
             <p className="text-sm font-medium">No active kitchen orders</p>
             <p className="text-xs font-light">Go to the "Kitchen Requests" tab to accept pending tickets.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4 py-4 max-h-[350px] overflow-y-auto pr-1">
+          <div className="flex flex-col gap-4 py-2 flex-1 min-h-0 overflow-y-auto pr-1">
             {acceptedNotifs.map((notif) => (
               <div key={notif.id} className="p-3.5 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col gap-2 shadow-xs">
-                {/* Compact Header: Table and Time in a single line */}
-                <div className="flex justify-between items-center pb-1.5 border-b border-dashed border-slate-200 dark:border-slate-800">
-                  <span className="text-sm font-black text-slate-800 dark:text-white">Table {notif.tableNumber}</span>
-                  <span className="text-[10px] text-slate-400 font-bold">
+                {/* Header: Table Name, Complete Order Button & Accepted Time */}
+                <div className="flex justify-between items-center pb-1.5 border-b border-dashed border-slate-200 dark:border-slate-800 gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-slate-800 dark:text-white">
+                      {notif.tableNumber.toLowerCase().includes('online') || notif.tableNumber.toLowerCase().includes('parcel') ? notif.tableNumber : `Table ${notif.tableNumber}`}
+                    </span>
+                    <button
+                      onClick={() => handleCompleteKitchenRequest(notif.id)}
+                      disabled={isCompletingId === notif.id}
+                      className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-350 text-slate-950 text-[11px] font-extrabold rounded-lg shadow-xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      {isCompletingId === notif.id ? 'Completing...' : 'Complete Order'}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-bold ml-auto">
                     Accepted: {notif.acceptedAt ? new Date(notif.acceptedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                   </span>
                 </div>
 
-                {/* Items List (compacted font size and spacing) */}
+                {/* Items List */}
                 <div className="py-0.5">
                   <ul className="space-y-0.5 text-xs font-semibold">
                     {notif.items.map((item, idx) => (
@@ -149,7 +161,7 @@ export const DashboardPage: React.FC = () => {
                   </ul>
                 </div>
 
-                {/* Compact Status Indicator Bar */}
+                {/* Status Indicator Bar */}
                 <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold border-t border-dashed border-slate-200 dark:border-slate-800 pt-1.5">
                   <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -157,16 +169,6 @@ export const DashboardPage: React.FC = () => {
                   </span>
                   <span>Accepted by {notif.acceptedBy === 'B1' ? 'Restaurant' : 'Fast Food'}</span>
                 </div>
-
-                {/* Compact Action Button */}
-                <button
-                  onClick={() => handleCompleteKitchenRequest(notif.id)}
-                  disabled={isCompletingId === notif.id}
-                  className="mt-1 w-full py-1.5 bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-450 dark:hover:bg-emerald-350 text-slate-950 dark:text-slate-950 text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  {isCompletingId === notif.id ? 'Completing...' : 'Complete Order'}
-                </button>
               </div>
             ))}
           </div>
