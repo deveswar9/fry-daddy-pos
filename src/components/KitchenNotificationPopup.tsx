@@ -41,62 +41,23 @@ export const KitchenNotificationPopup: React.FC = () => {
     }
   }, [queue, activeNotification]);
 
-  // Continuous Driver App Style Incoming Order Call Ringtone (Rapido / Uber Driver Call Ring)
+  // Continuous audio notification ringtone loop for NEW KITCHEN ORDER
   useEffect(() => {
     if (activeNotification) {
-      const playDriverCallTone = () => {
-        try {
-          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-          if (!AudioCtx) return;
-          const ctx = new AudioCtx();
-          if (ctx.state === 'suspended') {
-            ctx.resume().catch(() => {});
-          }
-          const now = ctx.currentTime;
+      const audio = new Audio('/notification_ring.mp3');
+      audio.loop = true;
 
-          // Rapid 5-tone ascending urgency ring (Rapido / Uber driver incoming order ring)
-          const tones = [
-            { freq: 800, start: 0.00, dur: 0.09 },
-            { freq: 1000, start: 0.11, dur: 0.09 },
-            { freq: 1200, start: 0.22, dur: 0.09 },
-            { freq: 1400, start: 0.33, dur: 0.09 },
-            { freq: 1650, start: 0.44, dur: 0.32 }
-          ];
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.log('Autoplay audio notification_ring.mp3 prevented by browser policy:', err);
+        });
+      }
 
-          tones.forEach(({ freq, start, dur }) => {
-            const osc = ctx.createOscillator();
-            const harmonic = ctx.createOscillator();
-            const gain = ctx.createGain();
-
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(freq, now + start);
-
-            harmonic.type = 'sine';
-            harmonic.frequency.setValueAtTime(freq * 1.5, now + start);
-
-            gain.gain.setValueAtTime(0.22, now + start);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
-
-            osc.connect(gain);
-            harmonic.connect(gain);
-            gain.connect(ctx.destination);
-
-            osc.start(now + start);
-            harmonic.start(now + start);
-            osc.stop(now + start + dur);
-            harmonic.stop(now + start + dur);
-          });
-
-        } catch (err) {
-          console.log('Driver call ringtone synth failed:', err);
-        }
+      return () => {
+        audio.pause();
+        audio.currentTime = 0;
       };
-
-      // Play immediately on mount, then loop continuously every 1.2 seconds (0.45s gap between calls)
-      playDriverCallTone();
-      const intervalId = setInterval(playDriverCallTone, 1200);
-
-      return () => clearInterval(intervalId);
     }
   }, [activeNotification]);
 
