@@ -96,8 +96,8 @@ export const DashboardPage: React.FC = () => {
   const insideTables = tables.filter((t) => t.location === 'Inside');
   const outsideTables = tables.filter((t) => t.location === 'Outside');
   const diningTables = outsideTables.filter(t => t.id.startsWith('A'));
-  const onlineTables = outsideTables.filter(t => t.id.startsWith('ONLINE') || t.number.toLowerCase().includes('online'));
-  const parcelTables = outsideTables.filter(t => t.id.startsWith('PARCEL') || t.number.toLowerCase().includes('parcel'));
+  const onlineTables = outsideTables.filter(t => t.id !== 'ONLINE_ORDERS' && (t.id.startsWith('ONLINE') || t.number.toLowerCase().includes('online')));
+  const parcelTables = outsideTables.filter(t => t.id !== 'PARCEL_ORDERS' && (t.id.startsWith('PARCEL') || t.number.toLowerCase().includes('parcel')));
 
   const renderPreparingOrders = () => {
     const acceptedNotifs = kitchenNotifications.filter(n => n.status === 'Accepted');

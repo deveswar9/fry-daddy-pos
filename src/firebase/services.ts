@@ -247,10 +247,13 @@ class MockDatabase {
         const missingTables = INITIAL_TABLES.filter(t => !existingIds.has(t.id));
         let mergedTables = missingTables.length > 0 ? [...tablesData, ...missingTables] : tablesData;
         
+        // Filter out legacy single-table IDs (ONLINE_ORDERS and PARCEL_ORDERS)
+        mergedTables = mergedTables.filter((t: any) => t.id !== 'ONLINE_ORDERS' && t.id !== 'PARCEL_ORDERS');
+
         // Sync updated number labels
         mergedTables = mergedTables.map((t: any) => {
-          if (t.id === 'ONLINE_ORDERS' || t.id === 'ONLINE_1') return { ...t, id: 'ONLINE_1', number: 'Online order 1' };
-          if (t.id === 'PARCEL_ORDERS' || t.id === 'PARCEL_1') return { ...t, id: 'PARCEL_1', number: 'Parcel order 1' };
+          if (t.id === 'ONLINE_1') return { ...t, number: 'Online order 1' };
+          if (t.id === 'PARCEL_1') return { ...t, number: 'Parcel order 1' };
           if (t.id === 'ONLINE_2') return { ...t, number: 'Online order 2' };
           if (t.id === 'ONLINE_3') return { ...t, number: 'Online order 3' };
           if (t.id === 'ONLINE_4') return { ...t, number: 'Online order 4' };
@@ -1946,20 +1949,21 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
         needsCommit = true;
       }
 
-      // Sync updated number labels in Firestore
+      // Sync updated number labels in Firestore & delete legacy IDs
       tablesSnap.forEach(docSnap => {
         const data = docSnap.data();
-        if (docSnap.id === 'ONLINE_ORDERS' || docSnap.id === 'ONLINE_1') {
-          if (data.number !== 'Online order 1') {
-            batch.update(doc(db, 'tables', docSnap.id), { number: 'Online order 1' });
-            needsCommit = true;
-          }
+        if (docSnap.id === 'ONLINE_ORDERS' || docSnap.id === 'PARCEL_ORDERS') {
+          batch.delete(doc(db, 'tables', docSnap.id));
+          needsCommit = true;
+          return;
         }
-        if (docSnap.id === 'PARCEL_ORDERS' || docSnap.id === 'PARCEL_1') {
-          if (data.number !== 'Parcel order 1') {
-            batch.update(doc(db, 'tables', docSnap.id), { number: 'Parcel order 1' });
-            needsCommit = true;
-          }
+        if (docSnap.id === 'ONLINE_1' && data.number !== 'Online order 1') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Online order 1' });
+          needsCommit = true;
+        }
+        if (docSnap.id === 'PARCEL_1' && data.number !== 'Parcel order 1') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Parcel order 1' });
+          needsCommit = true;
         }
         if (docSnap.id === 'ONLINE_2' && data.number !== 'Online order 2') {
           batch.update(doc(db, 'tables', docSnap.id), { number: 'Online order 2' });
