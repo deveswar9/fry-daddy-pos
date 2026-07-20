@@ -41,45 +41,73 @@ export const KitchenNotificationPopup: React.FC = () => {
     }
   }, [queue, activeNotification]);
 
-  // Repeating notification sound loop
+  // Continuous ringing notification sound loop (Ring-Ring tone with ~1 sec gap)
   useEffect(() => {
     if (activeNotification) {
-      const playChime = () => {
+      const playRingingTone = () => {
+        // Play notification audio file if present
         const audio = new Audio('/notification.wav');
-        audio.play().catch(() => {
-          // Dual-oscillator synth chime fallback if audio asset or browser auto-play fails
-          try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc1 = ctx.createOscillator();
-            const osc2 = ctx.createOscillator();
-            const gain = ctx.createGain();
+        audio.play().catch(() => {});
 
-            osc1.type = 'sine';
-            osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+        // Play high-urgency Web Audio API dual-beat ringing bell tone
+        try {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (!AudioCtx) return;
+          const ctx = new AudioCtx();
+          const now = ctx.currentTime;
 
-            osc2.type = 'triangle';
-            osc2.frequency.setValueAtTime(1109.73, ctx.currentTime); // C#6 note
+          // Pulse 1: First ring beat (0.0s -> 0.25s)
+          const osc1a = ctx.createOscillator();
+          const osc1b = ctx.createOscillator();
+          const gain1 = ctx.createGain();
 
-            gain.gain.setValueAtTime(0.15, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+          osc1a.type = 'sine';
+          osc1a.frequency.setValueAtTime(850, now);
+          osc1b.type = 'triangle';
+          osc1b.frequency.setValueAtTime(1275, now);
 
-            osc1.connect(gain);
-            osc2.connect(gain);
-            gain.connect(ctx.destination);
+          gain1.gain.setValueAtTime(0.25, now);
+          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
 
-            osc1.start();
-            osc2.start();
-            osc1.stop(ctx.currentTime + 0.45);
-            osc2.stop(ctx.currentTime + 0.45);
-          } catch (err) {
-            console.log('Audio synth chime fallback failed:', err);
-          }
-        });
+          osc1a.connect(gain1);
+          osc1b.connect(gain1);
+          gain1.connect(ctx.destination);
+
+          osc1a.start(now);
+          osc1b.start(now);
+          osc1a.stop(now + 0.25);
+          osc1b.stop(now + 0.25);
+
+          // Pulse 2: Second ring beat (0.3s -> 0.6s)
+          const osc2a = ctx.createOscillator();
+          const osc2b = ctx.createOscillator();
+          const gain2 = ctx.createGain();
+
+          osc2a.type = 'sine';
+          osc2a.frequency.setValueAtTime(950, now + 0.3);
+          osc2b.type = 'triangle';
+          osc2b.frequency.setValueAtTime(1425, now + 0.3);
+
+          gain2.gain.setValueAtTime(0.3, now + 0.3);
+          gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+          osc2a.connect(gain2);
+          osc2b.connect(gain2);
+          gain2.connect(ctx.destination);
+
+          osc2a.start(now + 0.3);
+          osc2b.start(now + 0.3);
+          osc2a.stop(now + 0.6);
+          osc2b.stop(now + 0.6);
+
+        } catch (err) {
+          console.log('Kitchen ring tone synth failed:', err);
+        }
       };
 
-      // Play immediately on mount, then loop every 3 seconds
-      playChime();
-      const intervalId = setInterval(playChime, 3000);
+      // Play immediately on mount, then loop with ~1 second gap (1600ms)
+      playRingingTone();
+      const intervalId = setInterval(playRingingTone, 1600);
 
       return () => clearInterval(intervalId);
     }
