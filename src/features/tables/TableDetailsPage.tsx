@@ -803,10 +803,10 @@ export const TableDetailsPage: React.FC = () => {
         <PrintReceipt
           tableName={table.number.toLowerCase().includes('online') || table.number.toLowerCase().includes('parcel') || table.number.toLowerCase().includes('app') ? table.number : `Table ${table.number}`}
           orderId={order?.id}
-          counterName={counter === 'B1' ? 'Restaurant Counter B1' : 'Fast Food Counter B2'}
+          counterName={counter === 'B1' ? 'RESTAURANT COUNTER' : 'FAST FOOD COUNTER'}
           items={items}
           grandTotal={order?.total || 0}
-          paymentStatus={order?.paymentStatus || 'Unpaid'}
+          paymentStatus="PAID"
           createdAt={order?.createdAt}
         />
       )}

@@ -186,10 +186,10 @@ export const SettingsPage: React.FC = () => {
         <PrintReceipt
           tableName="Sample Table S1"
           orderId="SAMPLE-789012"
-          counterName={counter === 'B1' ? 'Restaurant Counter B1' : 'Fast Food Counter B2'}
+          counterName={counter === 'B1' ? 'RESTAURANT COUNTER' : 'FAST FOOD COUNTER'}
           items={sampleItems}
           grandTotal={730}
-          paymentStatus="Paid"
+          paymentStatus="PAID"
         />
       )}
     </div>

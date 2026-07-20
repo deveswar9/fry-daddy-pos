@@ -31,6 +31,13 @@ export const PrintReceipt: React.FC<PrintReceiptProps> = ({
   const fastFoodItems = items.filter((i) => i.kitchen === 'Fast Food');
   const hasMultipleKitchens = restaurantItems.length > 0 && fastFoodItems.length > 0;
 
+  const displayCounterName = counterName
+    .replace(/\s*B[12]$/i, '')
+    .trim()
+    .toUpperCase();
+
+  const displayStatus = (paymentStatus === 'Unpaid' || !paymentStatus ? 'PAID' : paymentStatus).toUpperCase();
+
   return (
     <div id="printable-receipt-root" className="hidden print:block print:w-[78mm] print:m-0 print:p-2 text-black bg-white font-mono text-[11px] leading-tight">
       <style>{`
@@ -68,8 +75,8 @@ export const PrintReceipt: React.FC<PrintReceiptProps> = ({
 
       {/* Receipt Header */}
       <div className="text-center mb-3">
-        <h1 className="text-base font-black uppercase tracking-wider mb-0.5">FRY DADDY POS</h1>
-        <p className="text-[10px] font-semibold uppercase">{counterName}</p>
+        <h1 className="text-base font-black uppercase tracking-wider mb-0.5">FRY DADDY</h1>
+        <p className="text-[10px] font-semibold uppercase">{displayCounterName}</p>
         <div className="border-b border-black border-dashed my-2" />
       </div>
 
@@ -91,7 +98,7 @@ export const PrintReceipt: React.FC<PrintReceiptProps> = ({
         )}
         <div className="flex justify-between">
           <span>Status:</span>
-          <span className="font-bold uppercase">{paymentStatus}</span>
+          <span className="font-bold uppercase">{displayStatus}</span>
         </div>
       </div>
 
