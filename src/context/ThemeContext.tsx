@@ -7,6 +7,8 @@ interface ThemeContextType {
   toggleTheme: () => void;
   voiceEnabled: boolean;
   setVoiceEnabled: (enabled: boolean) => void;
+  printEnabled: boolean;
+  setPrintEnabled: (enabled: boolean) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -18,6 +20,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(() => {
     return localStorage.getItem('voice_announcements_enabled') !== 'false';
+  });
+
+  const [printEnabled, setPrintEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('print_button_enabled') === 'true';
   });
 
   useEffect(() => {
@@ -34,12 +40,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('voice_announcements_enabled', String(voiceEnabled));
   }, [voiceEnabled]);
 
+  useEffect(() => {
+    localStorage.setItem('print_button_enabled', String(printEnabled));
+  }, [printEnabled]);
+
   const toggleTheme = () => {
     setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, voiceEnabled, setVoiceEnabled }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, voiceEnabled, setVoiceEnabled, printEnabled, setPrintEnabled }}>
       {children}
     </ThemeContext.Provider>
   );

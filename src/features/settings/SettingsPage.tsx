@@ -7,11 +7,12 @@ import {
   Sun, 
   Moon, 
   LogOut, 
-  Shield 
+  Shield,
+  Printer
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
-  const { theme, toggleTheme, voiceEnabled, setVoiceEnabled } = useTheme();
+  const { theme, toggleTheme, voiceEnabled, setVoiceEnabled, printEnabled, setPrintEnabled } = useTheme();
   const { counter, logout } = useAuth();
 
   return (
@@ -81,6 +82,35 @@ export const SettingsPage: React.FC = () => {
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                   voiceEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Printing Card */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-500/10 dark:bg-emerald-400/15 rounded-xl text-emerald-500 dark:text-emerald-400">
+              <Printer className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Printing</h3>
+              <p className="text-xs text-slate-400">Configure receipt and billing print options</p>
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
+            <span className="text-sm font-medium">Enable Print Button</span>
+            <button
+              onClick={() => setPrintEnabled(!printEnabled)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                printEnabled ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  printEnabled ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>

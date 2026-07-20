@@ -20,6 +20,7 @@ import {
   MenuItem
 } from '@/firebase/services';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { AddItemsDialog } from '@/features/menu/AddItemsDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -36,6 +37,7 @@ export const TableDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { counter } = useAuth();
+  const { printEnabled } = useTheme();
 
   const [table, setTable] = useState<Table | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
@@ -767,6 +769,14 @@ export const TableDetailsPage: React.FC = () => {
                 >
                   Cancel
                 </button>
+                {printEnabled && (
+                  <button
+                    type="button"
+                    className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer"
+                  >
+                    Print
+                  </button>
+                )}
                 <button
                   onClick={handleCollectPayment}
                   className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-350 text-white text-sm font-bold shadow-md cursor-pointer transition-colors"
