@@ -476,7 +476,7 @@ export const TableDetailsPage: React.FC = () => {
         <div>
           <span className="text-xs text-slate-400 font-light uppercase tracking-wider">Table Details</span>
           <h1 className="text-3xl font-extrabold flex items-center gap-3">
-            {table.number.toLowerCase().includes('order') || table.number.toLowerCase().includes('parcel') ? table.number : `Table ${table.number}`}
+            {table.number.toLowerCase().includes('online') || table.number.toLowerCase().includes('parcel') || table.number.toLowerCase().includes('app') ? table.number : `Table ${table.number}`}
             <span className={getStatusBadge(table.status)}>{table.status}</span>
           </h1>
         </div>
@@ -491,7 +491,7 @@ export const TableDetailsPage: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold">Add Items</h2>
             <p className="text-slate-400 text-sm font-light mt-2 max-w-sm">
-              {table.number.toLowerCase().includes('order') || table.number.toLowerCase().includes('parcel') ? table.number : `Table ${table.number}`} is free. Select the first items to start the order.
+              {table.number.toLowerCase().includes('online') || table.number.toLowerCase().includes('parcel') || table.number.toLowerCase().includes('app') ? table.number : `Table ${table.number}`} is free. Select the first items to start the order.
             </p>
           </div>
           <button
@@ -702,7 +702,7 @@ export const TableDetailsPage: React.FC = () => {
               </div>
 
               <p className="text-slate-500 dark:text-slate-400 text-sm font-light leading-relaxed mb-6">
-                Are you sure you want to mark Table {table.number} as paid?
+                Are you sure you want to mark {table.number.toLowerCase().includes('online') || table.number.toLowerCase().includes('parcel') || table.number.toLowerCase().includes('app') ? table.number : `Table ${table.number}`} as paid?
                 This will log payment collected by <strong>{counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}</strong> and notify the other counter instantly.
               </p>
 

@@ -163,8 +163,8 @@ const INITIAL_TABLES: Table[] = [
   { id: 'A4', number: 'A4', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A5', number: 'A5', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A6', number: 'A6', location: 'Outside', status: 'Available', currentOrderId: null },
-  { id: 'ONLINE_ORDERS', number: 'Online Orders', location: 'Outside', status: 'Available', currentOrderId: null },
-  { id: 'PARCEL_ORDERS', number: 'Parcel Orders', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'ONLINE_ORDERS', number: 'Online/App', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'PARCEL_ORDERS', number: 'Parcel', location: 'Outside', status: 'Available', currentOrderId: null },
   // Inside
   { id: 'S1', number: 'S1', location: 'Inside', status: 'Available', currentOrderId: null },
   { id: 'S2', number: 'S2', location: 'Inside', status: 'Available', currentOrderId: null },
@@ -237,13 +237,18 @@ class MockDatabase {
       } else {
         const existingIds = new Set(tablesData.map((t: any) => t.id));
         const missingTables = INITIAL_TABLES.filter(t => !existingIds.has(t.id));
-        if (missingTables.length > 0) {
-          this.tables = [...tablesData, ...missingTables];
-          if (persist) {
-            localStorage.setItem('r_tables', JSON.stringify(this.tables));
-          }
-        } else {
-          this.tables = tablesData;
+        let mergedTables = missingTables.length > 0 ? [...tablesData, ...missingTables] : tablesData;
+        
+        // Sync updated number labels
+        mergedTables = mergedTables.map((t: any) => {
+          if (t.id === 'ONLINE_ORDERS' && t.number !== 'Online/App') return { ...t, number: 'Online/App' };
+          if (t.id === 'PARCEL_ORDERS' && t.number !== 'Parcel') return { ...t, number: 'Parcel' };
+          return t;
+        });
+
+        this.tables = mergedTables;
+        if (persist) {
+          localStorage.setItem('r_tables', JSON.stringify(this.tables));
         }
       }
       const parsedMenu = storedMenu ? JSON.parse(storedMenu) : [...INITIAL_MENU];
@@ -1916,14 +1921,33 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
       // Append any missing tables from INITIAL_TABLES to Firestore dynamically
       const existingIds = new Set(tables.map(t => t.id));
       const missingTables = INITIAL_TABLES.filter(t => !existingIds.has(t.id));
+      const batch = writeBatch(db);
+      let needsCommit = false;
+
       if (missingTables.length > 0) {
         console.log(`Adding ${missingTables.length} missing tables to Firestore...`);
-        const batch = writeBatch(db);
         missingTables.forEach(table => {
           batch.set(doc(db, 'tables', table.id), table);
         });
+        needsCommit = true;
+      }
+
+      // Sync updated number labels in Firestore
+      tablesSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (docSnap.id === 'ONLINE_ORDERS' && data.number !== 'Online/App') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Online/App' });
+          needsCommit = true;
+        }
+        if (docSnap.id === 'PARCEL_ORDERS' && data.number !== 'Parcel') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Parcel' });
+          needsCommit = true;
+        }
+      });
+
+      if (needsCommit) {
         await batch.commit();
-        console.log('Missing tables appended successfully.');
+        console.log('Firestore tables updated successfully.');
       }
     }
 
