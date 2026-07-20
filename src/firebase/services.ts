@@ -156,13 +156,15 @@ export const KITCHEN_TO_COUNTER: Record<string, string> = {
 // PRE-SEEDED DATA
 // ----------------------------------------------------
 const INITIAL_TABLES: Table[] = [
-  // Outside
+  // Outside (Fast Food Counter)
   { id: 'A1', number: 'A1', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A2', number: 'A2', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A3', number: 'A3', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A4', number: 'A4', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A5', number: 'A5', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A6', number: 'A6', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'ONLINE_ORDERS', number: 'Online Orders', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'PARCEL_ORDERS', number: 'Parcel Orders', location: 'Outside', status: 'Available', currentOrderId: null },
   // Inside
   { id: 'S1', number: 'S1', location: 'Inside', status: 'Available', currentOrderId: null },
   { id: 'S2', number: 'S2', location: 'Inside', status: 'Available', currentOrderId: null },
@@ -233,7 +235,16 @@ class MockDatabase {
       if (hasOldIds || !storedTables || tablesData.length === 0) {
         this.tables = [...INITIAL_TABLES];
       } else {
-        this.tables = tablesData;
+        const existingIds = new Set(tablesData.map((t: any) => t.id));
+        const missingTables = INITIAL_TABLES.filter(t => !existingIds.has(t.id));
+        if (missingTables.length > 0) {
+          this.tables = [...tablesData, ...missingTables];
+          if (persist) {
+            localStorage.setItem('r_tables', JSON.stringify(this.tables));
+          }
+        } else {
+          this.tables = tablesData;
+        }
       }
       const parsedMenu = storedMenu ? JSON.parse(storedMenu) : [...INITIAL_MENU];
       this.menu = parsedMenu.map((item: any) => {

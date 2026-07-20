@@ -476,7 +476,7 @@ export const TableDetailsPage: React.FC = () => {
         <div>
           <span className="text-xs text-slate-400 font-light uppercase tracking-wider">Table Details</span>
           <h1 className="text-3xl font-extrabold flex items-center gap-3">
-            Table {table.number}
+            {table.number.toLowerCase().includes('order') || table.number.toLowerCase().includes('parcel') ? table.number : `Table ${table.number}`}
             <span className={getStatusBadge(table.status)}>{table.status}</span>
           </h1>
         </div>
@@ -491,7 +491,7 @@ export const TableDetailsPage: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold">Add Items</h2>
             <p className="text-slate-400 text-sm font-light mt-2 max-w-sm">
-              Table {table.number} is free. Select the first items to start the order.
+              {table.number.toLowerCase().includes('order') || table.number.toLowerCase().includes('parcel') ? table.number : `Table ${table.number}`} is free. Select the first items to start the order.
             </p>
           </div>
           <button

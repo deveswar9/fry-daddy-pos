@@ -379,7 +379,9 @@ export const DashboardPage: React.FC = () => {
                       onClick={() => handleTableClick(table.id)}
                       className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 cursor-pointer card-hover ${getStatusColor(table.status)}`}
                     >
-                      <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
+                      <span className={table.number.length > 5 ? "text-base sm:text-lg font-black tracking-tight leading-tight" : "text-2xl font-extrabold tracking-tight"}>
+                        {table.number}
+                      </span>
                       <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
                         {getStatusLabel(table)}
                       </span>
@@ -425,7 +427,9 @@ export const DashboardPage: React.FC = () => {
                       onClick={() => handleTableClick(table.id)}
                       className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 cursor-pointer card-hover ${getStatusColor(table.status)}`}
                     >
-                      <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
+                      <span className={table.number.length > 5 ? "text-base sm:text-lg font-black tracking-tight leading-tight" : "text-2xl font-extrabold tracking-tight"}>
+                        {table.number}
+                      </span>
                       <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
                         {getStatusLabel(table)}
                       </span>
