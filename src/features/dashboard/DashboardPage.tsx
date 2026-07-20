@@ -211,6 +211,17 @@ export const DashboardPage: React.FC = () => {
   };
 
 
+  const isToday = (timestamp?: number | null) => {
+    if (!timestamp) return false;
+    const date = new Date(timestamp);
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
   const formatNotificationTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
@@ -591,67 +602,76 @@ export const DashboardPage: React.FC = () => {
               )}
             </div>
 
-            {/* Accepted Requests Column */}
-            <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
-                    <ChefHat className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold">👨‍🍳 Completed Orders</h2>
-                    <p className="text-xs text-slate-400 font-light">Tickets accepted and completed</p>
-                  </div>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                  {kitchenNotifications.filter(n => n.status === 'Completed').length} Completed
-                </span>
-              </div>
-
-              {kitchenNotifications.filter(n => n.status === 'Completed').length === 0 ? (
-                <div className="text-center py-16 text-slate-400 flex flex-col items-center justify-center gap-2">
-                  <ChefHat className="w-12 h-12 text-slate-300 dark:text-slate-800" />
-                  <p className="text-sm font-medium">No completed orders yet</p>
-                  <p className="text-xs font-light">Complete orders from the seating layout tab to see them here.</p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-4 py-4 max-h-[500px] overflow-y-auto pr-1">
-                  {kitchenNotifications.filter(n => n.status === 'Completed').map((notif) => (
-                    <div key={notif.id} className="p-5 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col gap-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <span className="text-xs text-slate-400 block">Table</span>
-                          <span className="text-lg font-black text-slate-800 dark:text-white">Table {notif.tableNumber}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs text-slate-400 block">Completed at</span>
-                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                            {notif.completedAt ? new Date(notif.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                          </span>
-                        </div>
+            {/* Accepted / Completed Requests Column */}
+            {(() => {
+              const completedTodayNotifs = kitchenNotifications.filter(
+                n => n.status === 'Completed' && isToday(n.completedAt || n.createdAt)
+              );
+              return (
+                <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
+                  <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-xl">
+                        <ChefHat className="w-5 h-5" />
                       </div>
-
-                      <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-2">
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Items</span>
-                        <ul className="space-y-1 text-sm font-semibold">
-                          {notif.items.map((item, idx) => (
-                            <li key={idx} className="flex justify-between text-slate-700 dark:text-slate-350">
-                              <span>{item.itemName}</span>
-                              <span className="text-slate-900 dark:text-white">x{item.quantity}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 bg-emerald-500/5 px-3 py-1.5 rounded-xl border border-emerald-500/10 font-bold">
-                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Completed</span>
-                        <span>Completed by Counter {notif.completedBy === 'B1' ? 'Restaurant' : 'Fast Food'}</span>
+                      <div>
+                        <h2 className="text-xl font-bold">👨‍🍳 Completed Orders</h2>
+                        <p className="text-xs text-slate-400 font-light">Today's tickets accepted &bull; Auto-resets daily</p>
                       </div>
                     </div>
-                  ))}
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                      {completedTodayNotifs.length} Completed Today
+                    </span>
+                  </div>
+
+                  {completedTodayNotifs.length === 0 ? (
+                    <div className="text-center py-16 text-slate-400 flex flex-col items-center justify-center gap-2">
+                      <ChefHat className="w-12 h-12 text-slate-300 dark:text-slate-800" />
+                      <p className="text-sm font-medium">No completed orders today yet</p>
+                      <p className="text-xs font-light">Tomorrow this list will start completely fresh automatically.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4 py-4 max-h-[500px] overflow-y-auto pr-1">
+                      {completedTodayNotifs.map((notif) => (
+                        <div key={notif.id} className="p-5 rounded-2xl border border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 flex flex-col gap-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-xs text-slate-400 block font-light">Table</span>
+                              <span className="text-lg font-black text-slate-800 dark:text-white">
+                                {notif.tableNumber.toLowerCase().includes('online') || notif.tableNumber.toLowerCase().includes('parcel') ? notif.tableNumber : `Table ${notif.tableNumber}`}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-xs text-slate-400 block font-light">Completed at</span>
+                              <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                                {notif.completedAt ? new Date(notif.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-dashed border-slate-200 dark:border-slate-800 pt-2">
+                            <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Items</span>
+                            <ul className="space-y-1 text-sm font-semibold">
+                              {notif.items.map((item, idx) => (
+                                <li key={idx} className="flex justify-between text-slate-700 dark:text-slate-350">
+                                  <span>{item.itemName}</span>
+                                  <span className="text-slate-900 dark:text-white">x{item.quantity}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400 bg-emerald-500/5 px-3 py-1.5 rounded-xl border border-emerald-500/10 font-bold">
+                            <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Completed Today</span>
+                            <span>Completed by Counter {notif.completedBy === 'B1' ? 'Restaurant' : 'Fast Food'}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
           </div>
         </div>
       )}
