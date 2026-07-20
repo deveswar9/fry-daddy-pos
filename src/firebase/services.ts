@@ -163,6 +163,7 @@ const INITIAL_TABLES: Table[] = [
   { id: 'A4', number: 'A4', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A5', number: 'A5', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A6', number: 'A6', location: 'Outside', status: 'Available', currentOrderId: null },
+  // Single-table mode active for Online/App and Parcel
   { id: 'ONLINE_ORDERS', number: 'Online/App', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'PARCEL_ORDERS', number: 'Parcel', location: 'Outside', status: 'Available', currentOrderId: null },
   // Inside
