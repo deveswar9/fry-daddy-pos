@@ -236,7 +236,7 @@ class MockDatabase {
       const storedKitchenNotifications = localStorage.getItem('r_kitchen_notifications');
 
       const tablesData = storedTables ? JSON.parse(storedTables) : [];
-      const hasOldIds = tablesData.some((t: any) => t.id.startsWith('I') || t.id.startsWith('O'));
+      const hasOldIds = tablesData.some((t: any) => /^(I|O)\d+$/.test(t.id));
       if (hasOldIds || !storedTables || tablesData.length === 0) {
         this.tables = [...INITIAL_TABLES];
       } else {
@@ -1902,7 +1902,7 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
       tables.push({ id: doc.id });
     });
 
-    const hasOldIds = tables.some((t: any) => t.id.startsWith('I') || t.id.startsWith('O'));
+    const hasOldIds = tables.some((t: any) => /^(I|O)\d+$/.test(t.id));
 
     if (tablesSnap.empty || hasOldIds) {
       console.log('Seeding Firestore tables (updating schema)...');
@@ -1911,7 +1911,7 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
       // Delete old tables if they exist
       if (hasOldIds) {
         tables.forEach(table => {
-          if (table.id.startsWith('I') || table.id.startsWith('O')) {
+          if (/^(I|O)\d+$/.test(table.id)) {
             batch.delete(doc(db, 'tables', table.id));
           }
         });
