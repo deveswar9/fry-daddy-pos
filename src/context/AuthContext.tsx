@@ -68,8 +68,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCounterState(account.role);
         }
       } else {
-        localStorage.removeItem('restaurant_counter');
-        setCounterState(null);
+        const stored = localStorage.getItem('restaurant_counter');
+        if (stored === 'B1' || stored === 'B2') {
+          setCounterState(stored);
+        } else {
+          setCounterState(null);
+        }
       }
 
       setIsLoading(false);
