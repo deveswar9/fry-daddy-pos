@@ -95,6 +95,9 @@ export const DashboardPage: React.FC = () => {
 
   const insideTables = tables.filter((t) => t.location === 'Inside');
   const outsideTables = tables.filter((t) => t.location === 'Outside');
+  const diningTables = outsideTables.filter(t => t.id.startsWith('A'));
+  const onlineTables = outsideTables.filter(t => t.id.startsWith('ONLINE') || t.number.toLowerCase().includes('online'));
+  const parcelTables = outsideTables.filter(t => t.id.startsWith('PARCEL') || t.number.toLowerCase().includes('parcel'));
 
   const renderPreparingOrders = () => {
     const acceptedNotifs = kitchenNotifications.filter(n => n.status === 'Accepted');
@@ -399,7 +402,7 @@ export const DashboardPage: React.FC = () => {
               </div>
             ) : (
               /* Outside Seating Section (B2 Primary Area) */
-              <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
+              <div className="flex flex-col gap-6 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/70 shadow-xl relative overflow-hidden">
                 {/* Subtle glow if active area */}
                 <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none" />
 
@@ -409,8 +412,8 @@ export const DashboardPage: React.FC = () => {
                       <Trees className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold">🍔 Fast Food Dining</h2>
-                      <p className="text-xs text-slate-400 font-light">Open Air &bull; Managed by Fast Food Counter</p>
+                      <h2 className="text-xl font-bold">🍔 Fast Food Counter</h2>
+                      <p className="text-xs text-slate-400 font-light">Open Air &bull; Online Orders &bull; Parcels</p>
                     </div>
                   </div>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400">
@@ -418,31 +421,94 @@ export const DashboardPage: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 py-4">
-                  {outsideTables.map((table) => (
-                    <motion.button
-                      key={table.id}
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => handleTableClick(table.id)}
-                      className={`relative flex flex-col items-center justify-center p-6 rounded-2xl border text-center transition-all duration-300 cursor-pointer card-hover ${getStatusColor(table.status)}`}
-                    >
-                      <span className={table.number.length > 5 ? "text-base sm:text-lg font-black tracking-tight leading-tight" : "text-2xl font-extrabold tracking-tight"}>
-                        {table.number}
-                      </span>
-                      <span className="text-[10px] font-semibold tracking-wide uppercase mt-2.5 truncate max-w-full px-1">
-                        {getStatusLabel(table)}
-                      </span>
+                {/* 1. Open Air Tables (A1 - A6) */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <span>🪑</span> Open Air Tables
+                  </span>
+                  <div className="grid grid-cols-3 gap-3">
+                    {diningTables.map((table) => (
+                      <motion.button
+                        key={table.id}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleTableClick(table.id)}
+                        className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all duration-300 cursor-pointer card-hover ${getStatusColor(table.status)}`}
+                      >
+                        <span className="text-2xl font-extrabold tracking-tight">{table.number}</span>
+                        <span className="text-[10px] font-semibold tracking-wide uppercase mt-1.5 truncate max-w-full px-1">
+                          {getStatusLabel(table)}
+                        </span>
 
-                      {/* Visual indicator for counter assignment */}
-                      {table.status === 'Payment Pending' && (
-                        <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white font-bold items-center justify-center">!</span>
-                        </div>
-                      )}
-                    </motion.button>
-                  ))}
+                        {table.status === 'Payment Pending' && (
+                          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white font-bold items-center justify-center">!</span>
+                          </div>
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Online Orders (Online order 1 - 4) */}
+                <div className="flex flex-col gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
+                    <span>📲</span> Online Orders
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {onlineTables.map((table) => (
+                      <motion.button
+                        key={table.id}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleTableClick(table.id)}
+                        className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all duration-300 cursor-pointer card-hover ${getStatusColor(table.status)}`}
+                      >
+                        <span className="text-sm font-black tracking-tight leading-tight">{table.number}</span>
+                        <span className="text-[10px] font-semibold tracking-wide uppercase mt-1 truncate max-w-full px-1">
+                          {getStatusLabel(table)}
+                        </span>
+
+                        {table.status === 'Payment Pending' && (
+                          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white font-bold items-center justify-center">!</span>
+                          </div>
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Parcel / Takeaway Orders (Parcel order 1 - 4) */}
+                <div className="flex flex-col gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-amber-500 dark:text-amber-400 flex items-center gap-1.5">
+                    <span>📦</span> Takeaway / Parcel Orders
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {parcelTables.map((table) => (
+                      <motion.button
+                        key={table.id}
+                        whileHover={{ scale: 1.03 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => handleTableClick(table.id)}
+                        className={`relative flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all duration-300 cursor-pointer card-hover ${getStatusColor(table.status)}`}
+                      >
+                        <span className="text-sm font-black tracking-tight leading-tight">{table.number}</span>
+                        <span className="text-[10px] font-semibold tracking-wide uppercase mt-1 truncate max-w-full px-1">
+                          {getStatusLabel(table)}
+                        </span>
+
+                        {table.status === 'Payment Pending' && (
+                          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[8px] text-white font-bold items-center justify-center">!</span>
+                          </div>
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}

@@ -163,9 +163,16 @@ const INITIAL_TABLES: Table[] = [
   { id: 'A4', number: 'A4', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A5', number: 'A5', location: 'Outside', status: 'Available', currentOrderId: null },
   { id: 'A6', number: 'A6', location: 'Outside', status: 'Available', currentOrderId: null },
-  // Single-table mode active for Online/App and Parcel
-  { id: 'ONLINE_ORDERS', number: 'Online/App', location: 'Outside', status: 'Available', currentOrderId: null },
-  { id: 'PARCEL_ORDERS', number: 'Parcel', location: 'Outside', status: 'Available', currentOrderId: null },
+  // Online Orders
+  { id: 'ONLINE_1', number: 'Online order 1', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'ONLINE_2', number: 'Online order 2', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'ONLINE_3', number: 'Online order 3', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'ONLINE_4', number: 'Online order 4', location: 'Outside', status: 'Available', currentOrderId: null },
+  // Parcel Orders
+  { id: 'PARCEL_1', number: 'Parcel order 1', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'PARCEL_2', number: 'Parcel order 2', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'PARCEL_3', number: 'Parcel order 3', location: 'Outside', status: 'Available', currentOrderId: null },
+  { id: 'PARCEL_4', number: 'Parcel order 4', location: 'Outside', status: 'Available', currentOrderId: null },
   // Inside
   { id: 'S1', number: 'S1', location: 'Inside', status: 'Available', currentOrderId: null },
   { id: 'S2', number: 'S2', location: 'Inside', status: 'Available', currentOrderId: null },
@@ -242,8 +249,14 @@ class MockDatabase {
         
         // Sync updated number labels
         mergedTables = mergedTables.map((t: any) => {
-          if (t.id === 'ONLINE_ORDERS' && t.number !== 'Online/App') return { ...t, number: 'Online/App' };
-          if (t.id === 'PARCEL_ORDERS' && t.number !== 'Parcel') return { ...t, number: 'Parcel' };
+          if (t.id === 'ONLINE_ORDERS' || t.id === 'ONLINE_1') return { ...t, id: 'ONLINE_1', number: 'Online order 1' };
+          if (t.id === 'PARCEL_ORDERS' || t.id === 'PARCEL_1') return { ...t, id: 'PARCEL_1', number: 'Parcel order 1' };
+          if (t.id === 'ONLINE_2') return { ...t, number: 'Online order 2' };
+          if (t.id === 'ONLINE_3') return { ...t, number: 'Online order 3' };
+          if (t.id === 'ONLINE_4') return { ...t, number: 'Online order 4' };
+          if (t.id === 'PARCEL_2') return { ...t, number: 'Parcel order 2' };
+          if (t.id === 'PARCEL_3') return { ...t, number: 'Parcel order 3' };
+          if (t.id === 'PARCEL_4') return { ...t, number: 'Parcel order 4' };
           return t;
         });
 
@@ -1936,12 +1949,40 @@ export async function seedFirestoreIfEmpty(): Promise<void> {
       // Sync updated number labels in Firestore
       tablesSnap.forEach(docSnap => {
         const data = docSnap.data();
-        if (docSnap.id === 'ONLINE_ORDERS' && data.number !== 'Online/App') {
-          batch.update(doc(db, 'tables', docSnap.id), { number: 'Online/App' });
+        if (docSnap.id === 'ONLINE_ORDERS' || docSnap.id === 'ONLINE_1') {
+          if (data.number !== 'Online order 1') {
+            batch.update(doc(db, 'tables', docSnap.id), { number: 'Online order 1' });
+            needsCommit = true;
+          }
+        }
+        if (docSnap.id === 'PARCEL_ORDERS' || docSnap.id === 'PARCEL_1') {
+          if (data.number !== 'Parcel order 1') {
+            batch.update(doc(db, 'tables', docSnap.id), { number: 'Parcel order 1' });
+            needsCommit = true;
+          }
+        }
+        if (docSnap.id === 'ONLINE_2' && data.number !== 'Online order 2') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Online order 2' });
           needsCommit = true;
         }
-        if (docSnap.id === 'PARCEL_ORDERS' && data.number !== 'Parcel') {
-          batch.update(doc(db, 'tables', docSnap.id), { number: 'Parcel' });
+        if (docSnap.id === 'ONLINE_3' && data.number !== 'Online order 3') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Online order 3' });
+          needsCommit = true;
+        }
+        if (docSnap.id === 'ONLINE_4' && data.number !== 'Online order 4') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Online order 4' });
+          needsCommit = true;
+        }
+        if (docSnap.id === 'PARCEL_2' && data.number !== 'Parcel order 2') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Parcel order 2' });
+          needsCommit = true;
+        }
+        if (docSnap.id === 'PARCEL_3' && data.number !== 'Parcel order 3') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Parcel order 3' });
+          needsCommit = true;
+        }
+        if (docSnap.id === 'PARCEL_4' && data.number !== 'Parcel order 4') {
+          batch.update(doc(db, 'tables', docSnap.id), { number: 'Parcel order 4' });
           needsCommit = true;
         }
       });
