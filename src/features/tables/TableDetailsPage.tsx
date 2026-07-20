@@ -22,6 +22,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { AddItemsDialog } from '@/features/menu/AddItemsDialog';
+import { PrintReceipt } from '@/components/PrintReceipt';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
@@ -772,9 +773,10 @@ export const TableDetailsPage: React.FC = () => {
                 {printEnabled && (
                   <button
                     type="button"
-                    className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer"
+                    onClick={() => window.print()}
+                    className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer flex items-center gap-1.5"
                   >
-                    Print
+                    <Receipt className="w-4 h-4" /> Print
                   </button>
                 )}
                 <button
@@ -795,6 +797,19 @@ export const TableDetailsPage: React.FC = () => {
         onClose={() => setIsAddOpen(false)}
         onAddItems={handleAddItems}
       />
+
+      {/* Printable Receipt Output */}
+      {table && printEnabled && (
+        <PrintReceipt
+          tableName={table.number.toLowerCase().includes('online') || table.number.toLowerCase().includes('parcel') || table.number.toLowerCase().includes('app') ? table.number : `Table ${table.number}`}
+          orderId={order?.id}
+          counterName={counter === 'B1' ? 'Restaurant Counter B1' : 'Fast Food Counter B2'}
+          items={items}
+          grandTotal={order?.total || 0}
+          paymentStatus={order?.paymentStatus || 'Unpaid'}
+          createdAt={order?.createdAt}
+        />
+      )}
     </div>
   );
 };

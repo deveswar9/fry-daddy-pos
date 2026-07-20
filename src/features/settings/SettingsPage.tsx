@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { PrintReceipt } from '@/components/PrintReceipt';
 import { 
   Volume2, 
   VolumeX, 
@@ -8,12 +9,19 @@ import {
   Moon, 
   LogOut, 
   Shield,
-  Printer
+  Printer,
+  FileText
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const { theme, toggleTheme, voiceEnabled, setVoiceEnabled, printEnabled, setPrintEnabled } = useTheme();
   const { counter, logout } = useAuth();
+
+  const sampleItems = [
+    { id: 'sample1', orderId: 'SAMPLE-789012', menuItemId: 'm1', itemName: 'Crispy Chicken Wings', quantity: 2, price: 220, category: 'Starters', kitchen: 'Restaurant' as const, status: 'Completed' as const, notes: null, createdAt: Date.now() },
+    { id: 'sample2', orderId: 'SAMPLE-789012', menuItemId: 'm2', itemName: 'Classic Cheese Burger', quantity: 1, price: 150, category: 'Fast Food', kitchen: 'Fast Food' as const, status: 'Completed' as const, notes: null, createdAt: Date.now() },
+    { id: 'sample3', orderId: 'SAMPLE-789012', menuItemId: 'm3', itemName: 'Cold Coffee', quantity: 2, price: 80, category: 'Beverages', kitchen: 'Fast Food' as const, status: 'Completed' as const, notes: null, createdAt: Date.now() },
+  ];
 
   return (
     <div className="flex flex-col gap-8 pb-12 max-w-4xl mx-auto">
@@ -100,20 +108,36 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
-            <span className="text-sm font-medium">Enable Print Button</span>
-            <button
-              onClick={() => setPrintEnabled(!printEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                printEnabled ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  printEnabled ? 'translate-x-6' : 'translate-x-1'
+          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Enable Print Button</span>
+              <button
+                onClick={() => setPrintEnabled(!printEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                  printEnabled ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
                 }`}
-              />
-            </button>
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    printEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {printEnabled && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800/60 flex justify-between items-center">
+                <span className="text-xs text-slate-400">Test receipt layout (80mm)</span>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-850 cursor-pointer flex items-center gap-1.5"
+                >
+                  <FileText className="w-3.5 h-3.5 text-emerald-500" />
+                  Test Print / Preview
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -156,6 +180,18 @@ export const SettingsPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Printable Receipt Sample for Testing */}
+      {printEnabled && (
+        <PrintReceipt
+          tableName="Sample Table S1"
+          orderId="SAMPLE-789012"
+          counterName={counter === 'B1' ? 'Restaurant Counter B1' : 'Fast Food Counter B2'}
+          items={sampleItems}
+          grandTotal={730}
+          paymentStatus="Paid"
+        />
+      )}
     </div>
   );
 };
