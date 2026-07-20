@@ -1804,6 +1804,31 @@ export async function deleteMenuItem(itemId: string): Promise<void> {
   await deleteDoc(ref);
 }
 
+export async function batchImportMenuItems(items: Omit<MenuItem, 'id'>[]): Promise<void> {
+  if (!isFirebaseConfigured) {
+    items.forEach(item => mockDb.createMenuItem(item));
+    return;
+  }
+
+  const batch = writeBatch(db);
+  items.forEach((item) => {
+    const newDocRef = doc(collection(db, 'menu'));
+    let kitchenTarget: MenuItem['kitchen'] = item.kitchen || 'Restaurant';
+    if ((kitchenTarget as string) === 'Fast Food Kitchen') kitchenTarget = 'Fast Food';
+    if ((kitchenTarget as string) === 'Franchise Kitchen') kitchenTarget = 'Restaurant';
+
+    batch.set(newDocRef, {
+      name: item.name.trim(),
+      price: Number(item.price) || 0,
+      category: item.category || 'General',
+      kitchen: kitchenTarget,
+      active: item.active !== false
+    });
+  });
+
+  await batch.commit();
+}
+
 // Reports helpers
 export async function getReportsData(): Promise<{ orders: Order[], items: OrderItem[] }> {
   if (!isFirebaseConfigured) {
