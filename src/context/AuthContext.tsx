@@ -20,14 +20,14 @@ const COUNTER_ACCOUNTS: CounterAccount[] = [
   {
     role: 'B1',
     username: import.meta.env.VITE_COUNTER_B1_USERNAME || 'b1',
-    email: import.meta.env.VITE_COUNTER_B1_EMAIL || 'b1@frydaddy.local',
-    demoPassword: import.meta.env.VITE_COUNTER_B1_PASSWORD || 'b1',
+    email: import.meta.env.VITE_COUNTER_B1_EMAIL || 'b1@frydaddy.pos',
+    demoPassword: import.meta.env.VITE_COUNTER_B1_PASSWORD || 'FryB1@2026!',
   },
   {
     role: 'B2',
     username: import.meta.env.VITE_COUNTER_B2_USERNAME || 'b2',
-    email: import.meta.env.VITE_COUNTER_B2_EMAIL || 'b2@frydaddy.local',
-    demoPassword: import.meta.env.VITE_COUNTER_B2_PASSWORD || 'b2',
+    email: import.meta.env.VITE_COUNTER_B2_EMAIL || 'b2@frydaddy.pos',
+    demoPassword: import.meta.env.VITE_COUNTER_B2_PASSWORD || 'FryB2@2026!',
   },
 ];
 

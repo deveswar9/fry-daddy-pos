@@ -247,7 +247,7 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
                           <span className="font-semibold text-sm line-clamp-1">{item.name || 'Unnamed Item'}</span>
                         </div>
                         <span className="text-sm font-extrabold mt-1 text-slate-700 dark:text-slate-300 block">
-                          ₹{item.price !== null ? item.price : 'N/A'}
+                          {item.price !== null ? `₹${item.price}` : <span className="text-amber-500 text-xs font-semibold">Needs Price Verification</span>}
                         </span>
                         {isSelected && selection.notes && (
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 italic block mt-1 line-clamp-1">
@@ -268,16 +268,22 @@ export const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ isOpen, onClose,
                             </button>
                             <span className="w-6 text-center font-extrabold text-sm">{selection.quantity}</span>
                             <button
-                              onClick={() => handleUpdateQuantity(item.id, 1)}
-                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 cursor-pointer"
+                              disabled={item.price === null}
+                              onClick={() => item.price !== null && handleUpdateQuantity(item.id, 1)}
+                              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 hover:bg-slate-100 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                             >
                               <Plus className="w-3.5 h-3.5" />
                             </button>
                           </>
                         ) : (
                           <button
-                            onClick={() => handleUpdateQuantity(item.id, 1)}
-                            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 group-hover:bg-emerald-500 dark:group-hover:bg-emerald-400 group-hover:text-white dark:group-hover:text-slate-950 transition-colors cursor-pointer"
+                            disabled={item.price === null}
+                            onClick={() => item.price !== null && handleUpdateQuantity(item.id, 1)}
+                            className={`p-2 rounded-xl text-slate-600 dark:text-slate-400 transition-colors ${
+                              item.price === null
+                                ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed opacity-50'
+                                : 'bg-slate-100 dark:bg-slate-900 group-hover:bg-emerald-500 dark:group-hover:bg-emerald-400 group-hover:text-white dark:group-hover:text-slate-950 cursor-pointer'
+                            }`}
                           >
                             <Plus className="w-4 h-4" />
                           </button>

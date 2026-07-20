@@ -8,11 +8,8 @@ import {
   onSnapshot, 
   query, 
   where, 
-  orderBy, 
-  serverTimestamp, 
   runTransaction,
   writeBatch,
-  Timestamp,
   getDoc,
   getDocs,
   deleteField
@@ -488,10 +485,10 @@ class MockDatabase {
     order.updatedAt = now;
     this.orders.set(orderId, order);
 
-    // If order was Paid or Cleaning, set back to Occupied on new order addition
-    const table = this.tables.find(t => t.currentOrderId === orderId);
-    if (table && (table.status === 'Paid' || table.status === 'Cleaning' || table.status === 'Payment Pending')) {
-      this.updateTable(table.id, { status: 'Occupied' });
+    // Always ensure associated table is Occupied with currentOrderId linked
+    const table = this.tables.find(t => t.currentOrderId === orderId || t.id === order.tableId);
+    if (table) {
+      this.updateTable(table.id, { status: 'Occupied', currentOrderId: orderId });
     }
 
     this.notify(`order:${orderId}`);
@@ -1361,8 +1358,6 @@ export async function markOrderItemKitchenAcceptedImmediately(
   }
 
   const itemRef = doc(db, 'orderItems', itemId);
-  const itemSnap = await getDoc(itemRef);
-  const itemName = itemSnap.exists() ? (itemSnap.data()?.itemName || 'Item') : 'Item';
 
   await updateDoc(itemRef, {
     status: 'Accepted',
@@ -1402,12 +1397,12 @@ export async function createOrder(tableId: string, actor: 'B1' | 'B2'): Promise<
     // 1. Create order
     transaction.set(orderRef, newOrder);
     
-    // 3. Update Table state
+    // 3. Update Table state safely with merge: true
     const tableRef = doc(db, 'tables', tableId);
-    transaction.update(tableRef, {
+    transaction.set(tableRef, {
       status: 'Occupied',
       currentOrderId: orderId
-    });
+    }, { merge: true });
   });
 
   return orderId;
@@ -1481,9 +1476,6 @@ export async function addOrderItem(
     }
 
     // Recalculate order subtotal
-    // Rather than doing incremental addition (which is prone to race conditions if done purely client side),
-    // let's fetch all items in the order or increment it in database.
-    // Since we are in transaction, we can add the incremental price addition.
     const addedCost = itemPrice * quantity;
     const finalSubtotal = oldSubtotal + addedCost;
 
@@ -1493,11 +1485,12 @@ export async function addOrderItem(
       updatedAt: now
     });
 
-    // Update table status if it was Payment Pending or Cleaning
+    // Update table status and keep currentOrderId synced
     const tableRef = doc(db, 'tables', orderData.tableId);
-    transaction.update(tableRef, {
-      status: 'Occupied'
-    });
+    transaction.set(tableRef, {
+      status: 'Occupied',
+      currentOrderId: orderId
+    }, { merge: true });
   });
 }
 
@@ -1560,7 +1553,6 @@ export async function updateOrderItemServedStatus(
   }
 
   const itemRef = doc(db, 'orderItems', itemId);
-  const now = Date.now();
 
   await runTransaction(db, async (transaction) => {
     const itemDoc = await transaction.get(itemRef);
@@ -1640,8 +1632,6 @@ export async function collectPayment(orderId: string, collectedBy: 'B1' | 'B2'):
     const orderData = orderDoc.data() as Order;
 
     const tableRef = doc(db, 'tables', orderData.tableId);
-    const tableDoc = await transaction.get(tableRef);
-    const tableName = tableDoc.exists() ? (tableDoc.data()?.number || orderData.tableId) : orderData.tableId;
 
     transaction.update(orderRef, {
       paymentStatus: 'Paid',

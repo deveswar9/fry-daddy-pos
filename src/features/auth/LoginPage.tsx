@@ -111,7 +111,7 @@ export const LoginPage: React.FC = () => {
         transition={{ delay: 0.6 }}
         className="mt-8 text-slate-500 text-xs font-light tracking-wide z-10"
       >
-        Local demo login: b1 / b1 or b2 / b2
+        Local demo login: b1 / FryB1@2026! or b2 / FryB2@2026!
       </motion.p>
     </div>
   );

@@ -24,7 +24,6 @@ import { AddItemsDialog } from '@/features/menu/AddItemsDialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
-  Clock,
   CreditCard,
   Plus,
   Trash2,
@@ -89,13 +88,19 @@ export const TableDetailsPage: React.FC = () => {
     if (!id || !counter || itemsToAdd.length === 0) return;
     setIsLoading(true);
     try {
-      const orderId = order?.id || table?.currentOrderId || await createOrder(id, counter);
-      for (const entry of itemsToAdd) {
-        await addOrderItem(orderId, entry.menuItem, entry.quantity, entry.notes, counter);
+      let activeOrderId = (order && order.status === 'Active') ? order.id : (table?.status !== 'Available' ? table?.currentOrderId : null);
+
+      if (!activeOrderId) {
+        activeOrderId = await createOrder(id, counter);
+        setTable(prev => prev ? { ...prev, status: 'Occupied', currentOrderId: activeOrderId || null } : prev);
       }
 
+      for (const entry of itemsToAdd) {
+        await addOrderItem(activeOrderId, entry.menuItem, entry.quantity, entry.notes, counter);
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to add order items:', e);
+      alert('Failed to add items to order. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -215,10 +220,6 @@ export const TableDetailsPage: React.FC = () => {
     } catch (e) {
       console.error(e);
     }
-  };
-
-  const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const getStatusBadge = (status: Table['status']) => {

@@ -11,15 +11,8 @@ import {
   LayoutDashboard,
   BookOpen,
   BarChart3,
-  Sun,
-  Moon,
-  LogOut,
-  Clock,
   ChefHat,
-  Check,
   CreditCard,
-  Volume2,
-  VolumeX,
   Menu,
   X,
   ChevronLeft,
@@ -52,7 +45,7 @@ const markIdAsPlayed = (id: string) => {
 
 export const Layout: React.FC = () => {
   const { counter, logout } = useAuth();
-  const { theme, toggleTheme, voiceEnabled } = useTheme();
+  const { toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
