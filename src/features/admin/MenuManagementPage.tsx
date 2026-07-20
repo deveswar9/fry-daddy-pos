@@ -132,18 +132,25 @@ export const MenuManagementPage: React.FC = () => {
     }
   };
 
-  // Excel Sample Template Downloader
+  // Export Current Menu / Excel Template Downloader
   const handleDownloadTemplate = () => {
-    const templateData = [
+    const exportData = menu.length > 0 ? menu.map((item) => ({
+      Name: item.name,
+      Price: item.price,
+      Category: item.category,
+      Kitchen: item.kitchen,
+      Active: item.active !== false ? 'TRUE' : 'FALSE'
+    })) : [
       { Name: 'Chicken Biryani', Price: 220, Category: 'Rice', Kitchen: 'Restaurant', Active: 'TRUE' },
       { Name: 'Paneer Butter Masala', Price: 180, Category: 'Main Course', Kitchen: 'Restaurant', Active: 'TRUE' },
       { Name: 'Crispy French Fries', Price: 90, Category: 'Fast Food', Kitchen: 'Fast Food', Active: 'TRUE' },
       { Name: 'Cold Coffee', Price: 70, Category: 'Beverages', Kitchen: 'Fast Food', Active: 'TRUE' }
     ];
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Menu Items');
-    XLSX.writeFile(workbook, 'fry_daddy_menu_import_template.xlsx');
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Current Menu');
+    const dateStr = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(workbook, `fry_daddy_menu_${dateStr}.xlsx`);
   };
 
   // Excel / CSV File Parsing Handler
@@ -249,10 +256,10 @@ export const MenuManagementPage: React.FC = () => {
           <button
             onClick={handleDownloadTemplate}
             className="flex items-center gap-2 px-3.5 py-2 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-900 rounded-xl text-xs font-bold shadow-xs cursor-pointer transition-all"
-            title="Download sample Excel template"
+            title="Download current live menu items as Excel file"
           >
             <Download className="w-3.5 h-3.5 text-slate-400" />
-            Sample Excel
+            Export Current Menu
           </button>
 
           <input
