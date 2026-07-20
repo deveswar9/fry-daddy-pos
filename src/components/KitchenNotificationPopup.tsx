@@ -41,73 +41,60 @@ export const KitchenNotificationPopup: React.FC = () => {
     }
   }, [queue, activeNotification]);
 
-  // Continuous ringing notification sound loop (Ring-Ring tone with ~1 sec gap)
+  // Continuous Driver App Style Incoming Order Call Ringtone (Rapido / Uber Driver Call Ring)
   useEffect(() => {
     if (activeNotification) {
-      const playRingingTone = () => {
-        // Play notification audio file if present
-        const audio = new Audio('/notification.wav');
-        audio.play().catch(() => {});
-
-        // Play high-urgency Web Audio API dual-beat ringing bell tone
+      const playDriverCallTone = () => {
         try {
           const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
           if (!AudioCtx) return;
           const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+          }
           const now = ctx.currentTime;
 
-          // Pulse 1: First ring beat (0.0s -> 0.25s)
-          const osc1a = ctx.createOscillator();
-          const osc1b = ctx.createOscillator();
-          const gain1 = ctx.createGain();
+          // Rapid 5-tone ascending urgency ring (Rapido / Uber driver incoming order ring)
+          const tones = [
+            { freq: 800, start: 0.00, dur: 0.09 },
+            { freq: 1000, start: 0.11, dur: 0.09 },
+            { freq: 1200, start: 0.22, dur: 0.09 },
+            { freq: 1400, start: 0.33, dur: 0.09 },
+            { freq: 1650, start: 0.44, dur: 0.32 }
+          ];
 
-          osc1a.type = 'sine';
-          osc1a.frequency.setValueAtTime(850, now);
-          osc1b.type = 'triangle';
-          osc1b.frequency.setValueAtTime(1275, now);
+          tones.forEach(({ freq, start, dur }) => {
+            const osc = ctx.createOscillator();
+            const harmonic = ctx.createOscillator();
+            const gain = ctx.createGain();
 
-          gain1.gain.setValueAtTime(0.25, now);
-          gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, now + start);
 
-          osc1a.connect(gain1);
-          osc1b.connect(gain1);
-          gain1.connect(ctx.destination);
+            harmonic.type = 'sine';
+            harmonic.frequency.setValueAtTime(freq * 1.5, now + start);
 
-          osc1a.start(now);
-          osc1b.start(now);
-          osc1a.stop(now + 0.25);
-          osc1b.stop(now + 0.25);
+            gain.gain.setValueAtTime(0.22, now + start);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
 
-          // Pulse 2: Second ring beat (0.3s -> 0.6s)
-          const osc2a = ctx.createOscillator();
-          const osc2b = ctx.createOscillator();
-          const gain2 = ctx.createGain();
+            osc.connect(gain);
+            harmonic.connect(gain);
+            gain.connect(ctx.destination);
 
-          osc2a.type = 'sine';
-          osc2a.frequency.setValueAtTime(950, now + 0.3);
-          osc2b.type = 'triangle';
-          osc2b.frequency.setValueAtTime(1425, now + 0.3);
-
-          gain2.gain.setValueAtTime(0.3, now + 0.3);
-          gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-
-          osc2a.connect(gain2);
-          osc2b.connect(gain2);
-          gain2.connect(ctx.destination);
-
-          osc2a.start(now + 0.3);
-          osc2b.start(now + 0.3);
-          osc2a.stop(now + 0.6);
-          osc2b.stop(now + 0.6);
+            osc.start(now + start);
+            harmonic.start(now + start);
+            osc.stop(now + start + dur);
+            harmonic.stop(now + start + dur);
+          });
 
         } catch (err) {
-          console.log('Kitchen ring tone synth failed:', err);
+          console.log('Driver call ringtone synth failed:', err);
         }
       };
 
-      // Play immediately on mount, then loop with ~1 second gap (1600ms)
-      playRingingTone();
-      const intervalId = setInterval(playRingingTone, 1600);
+      // Play immediately on mount, then loop continuously every 1.2 seconds (0.45s gap between calls)
+      playDriverCallTone();
+      const intervalId = setInterval(playDriverCallTone, 1200);
 
       return () => clearInterval(intervalId);
     }
