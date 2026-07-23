@@ -9,6 +9,8 @@ import { TableDetailsPage } from './features/tables/TableDetailsPage';
 import { MenuManagementPage } from './features/admin/MenuManagementPage';
 import { ReportsPage } from './features/reports/ReportsPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { isFirebaseConfigured } from '@/firebase/config';
+import { AlertTriangle } from 'lucide-react';
 
 const ProtectedRoutes: React.FC = () => {
   const { counter, isLoading } = useAuth();
@@ -33,6 +35,26 @@ const ProtectedRoutes: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
+  if (!isFirebaseConfigured && import.meta.env.MODE !== 'test') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
+        <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl text-center">
+          <div className="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle className="w-8 h-8 animate-pulse" />
+          </div>
+          <h2 className="text-xl font-bold mb-2">Live Database Connection Required</h2>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mb-6 leading-relaxed">
+            Firebase credentials are not configured or placeholder was detected. Please configure your <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-xs">.env.local</code> file to enable live POS database connections.
+          </p>
+          <div className="text-xs text-left bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 p-4 rounded-xl font-mono text-slate-600 dark:text-slate-400">
+            VITE_FIREBASE_API_KEY=...<br />
+            VITE_FIREBASE_PROJECT_ID=...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <BrowserRouter>
       <Routes>

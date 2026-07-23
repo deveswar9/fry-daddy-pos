@@ -20,7 +20,6 @@ import {
   Settings
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { voiceAnnouncementService, convertTableToSpeechText } from '@/services/voiceAnnouncement';
 import { KitchenNotificationPopup } from './KitchenNotificationPopup';
 
 
@@ -45,7 +44,6 @@ const markIdAsPlayed = (id: string) => {
 
 export const Layout: React.FC = () => {
   const { counter, logout } = useAuth();
-  const { toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -80,8 +78,6 @@ export const Layout: React.FC = () => {
         const hasPlayed = played.has(n.id);
         if (isNew && !hasPlayed) {
           markIdAsPlayed(n.id);
-          const tableText = convertTableToSpeechText(n.tableName || n.tableId || '');
-          voiceAnnouncementService.announce(`Payment received for ${tableText}.`);
         }
       });
       
@@ -134,9 +130,6 @@ export const Layout: React.FC = () => {
         } else if (e.key.toLowerCase() === 'r') {
           e.preventDefault();
           navigate('/reports');
-        } else if (e.key.toLowerCase() === 't') {
-          e.preventDefault();
-          toggleTheme();
         } else if (e.key.toLowerCase() === 's') {
           e.preventDefault();
           navigate('/settings');
@@ -146,7 +139,7 @@ export const Layout: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate, toggleTheme]);
+  }, [navigate]);
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard, shortcut: 'Alt + D' },

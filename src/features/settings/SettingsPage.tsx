@@ -3,10 +3,6 @@ import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { PrintReceipt } from '@/components/PrintReceipt';
 import { 
-  Volume2, 
-  VolumeX, 
-  Sun, 
-  Moon, 
   LogOut, 
   Shield,
   Printer,
@@ -14,7 +10,7 @@ import {
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
-  const { theme, toggleTheme, voiceEnabled, setVoiceEnabled, printEnabled, setPrintEnabled } = useTheme();
+  const { printEnabled, setPrintEnabled } = useTheme();
   const { counter, logout } = useAuth();
 
   const sampleItems = [
@@ -32,70 +28,12 @@ export const SettingsPage: React.FC = () => {
             Settings
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-            Manage your interface theme, announcements, and active session
+            Manage your billing receipt printing options and active session
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Appearance Card */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 dark:bg-emerald-400/15 rounded-xl text-emerald-500 dark:text-emerald-400">
-              {theme === 'light' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </div>
-            <div>
-              <h3 className="text-lg font-bold">Appearance</h3>
-              <p className="text-xs text-slate-400">Customize the application color theme</p>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
-            <span className="text-sm font-medium">Dark Mode</span>
-            <button
-              onClick={toggleTheme}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                theme === 'dark' ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-
-        {/* Announcements Card */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-500/10 dark:bg-emerald-400/15 rounded-xl text-emerald-500 dark:text-emerald-400">
-              {voiceEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-            </div>
-            <div>
-              <h3 className="text-lg font-bold">Notifications</h3>
-              <p className="text-xs text-slate-400">Voice broadcast settings for billing actions</p>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-100 dark:border-slate-800/80 pt-4 flex items-center justify-between">
-            <span className="text-sm font-medium">Voice Announcements</span>
-            <button
-              onClick={() => setVoiceEnabled(!voiceEnabled)}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                voiceEnabled ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  voiceEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-        </div>
-
         {/* Printing Card */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-xs flex flex-col gap-6">
           <div className="flex items-center gap-3">
