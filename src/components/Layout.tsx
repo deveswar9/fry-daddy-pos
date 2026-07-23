@@ -17,7 +17,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Settings
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { KitchenNotificationPopup } from './KitchenNotificationPopup';
@@ -315,6 +316,16 @@ export const Layout: React.FC = () => {
                   {counter === 'B1' ? 'Restaurant Counter' : 'Fast Food Counter'}
                 </div>
               </div>
+
+              {/* Sign Out Header Icon */}
+              <button
+                onClick={logout}
+                className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-450 hover:bg-rose-50/50 dark:hover:bg-rose-950/20 transition-all cursor-pointer shadow-xs"
+                title="Sign Out"
+                aria-label="Sign Out"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
             </div>
           </div>
         </header>

@@ -35,7 +35,7 @@ const ProtectedRoutes: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  if (!isFirebaseConfigured && import.meta.env.PROD && import.meta.env.MODE !== 'test') {
+  if (!isFirebaseConfigured && import.meta.env.DEV && import.meta.env.MODE !== 'test') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-4">
         <div className="max-w-md w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-xl text-center">
